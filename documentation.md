@@ -33,9 +33,9 @@ src/
     types.ts                    (complete)
     shoe.ts                     (complete)
     hand.ts                     (complete)
-    rules.ts                    (empty)
-    dealer.ts                   (empty)
-    settle.ts                   (empty)
+    rules.ts                    (complete)
+    dealer.ts                   (complete)
+    settle.ts                   (complete)
     recommendation.ts           (empty)
   lib/
     auth.ts                     (empty)
@@ -53,7 +53,9 @@ src/
 - Phase 2, Step 6 (Shoe) — complete
 - Phase 2, Step 7 (Hand value logic) — complete
 - Phase 2, Step 8 (Action legality) — complete
-- Phase 2, Steps 9–11 — not started
+- Phase 2, Step 9 (Round flow — dealer) — complete
+- Phase 2, Step 10 (Settle) — complete
+- Phase 2, Steps 9 (startRound, applyPlayerAction, advanceToNextHand), 11 — not started
 
 ---
 
@@ -140,7 +142,7 @@ All shoe-related logic. Imports `RULES`, `RANKS`, `SUITS` from `constants.ts`.
 Hand evaluation logic. Imports `Card`, `PlayerHand`, `DealerHand` from `types.ts`.
 
 ### Design decisions
-- `cardValue` is a private helper (not exported) — only `hand.ts` internals need it
+- `cardValue` is exported — needed by `rules.ts` for same-value split comparison
 - `isSoft` computes a hard total (all aces as 1) then checks if adding 10 stays ≤ 21 — correctly handles multiple aces
 - `isBlackjack` uses `"isSplit" in hand` to narrow the union type before checking `isSplit`, since `DealerHand` does not have that property
 - A split hand that reaches 21 is not blackjack — `isSplit` check guards this
@@ -175,8 +177,39 @@ Action legality checks. Imports `RULES` from `constants.ts`, `cardValue` from `h
 
 ---
 
+---
+
+## `src/engine/dealer.ts`
+
+Dealer play logic. Imports `RULES` from `constants.ts`, `getHandValue`, `isSoft` from `hand.ts`, `drawCard` from `shoe.ts`.
+
+### Design decisions
+- `shouldDealerHit` is a private helper — keeps the while condition readable
+- Mutates `state` and `shoe` in place — no return value needed
+
+### Functions
+- `playDealerHand(state, shoe)` — reveals hole card, draws until hard 17+ (hits soft 17 per H17 rule)
+
+---
+
+## `src/engine/settle.ts`
+
+Round settlement and payout logic. Imports `getHandValue`, `isBlackjack`, `isBust` from `hand.ts`.
+
+### Design decisions
+- `settleHand` uses early returns to prevent fall-through — cases must not overwrite each other
+- Blackjack push checked before player-only blackjack to avoid misclassifying a mutual blackjack as a player win
+- `hand.bet` stores the final wager including any double — `payout` does not need separate doubled handling
+- `payout` does not take `dealerHand` as a parameter — result is already set on the hand by `settleHand`
+- Insurance is not settled here — handled separately before player turn
+
+### Functions
+- `settleHand(playerHand, dealerHand)` *(private)* — sets `playerHand.result` based on bust, blackjack, and total comparisons
+- `payout(playerHand)` *(private)* — returns net bankroll change: +bet for win, -bet for lose, 0 for push, +1.5x for blackjack, -0.5x for surrender
+- `settleRound(state)` — loops all player hands, calls settleHand then payout, updates `state.bankroll`
+
+---
+
 ## `src/engine/` — remaining files (not started)
 
-- `dealer.ts` — dealer play logic
-- `settle.ts` — round settlement and payout logic
 - `recommendation.ts` — basic strategy recommendation engine
