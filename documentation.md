@@ -52,7 +52,8 @@ src/
 - Phase 2, Step 5 (Types) — complete
 - Phase 2, Step 6 (Shoe) — complete
 - Phase 2, Step 7 (Hand value logic) — complete
-- Phase 2, Steps 8–11 — not started
+- Phase 2, Step 8 (Action legality) — complete
+- Phase 2, Steps 9–11 — not started
 
 ---
 
@@ -152,9 +153,30 @@ Hand evaluation logic. Imports `Card`, `PlayerHand`, `DealerHand` from `types.ts
 
 ---
 
+---
+
+## `src/engine/rules.ts`
+
+Action legality checks. Imports `RULES` from `constants.ts`, `cardValue` from `hand.ts`.
+
+### Design decisions
+- `canHit` and `canStand` were dropped — they reduce to `phase === "player-turn"` and add no value as named functions
+- Phase is treated as the source of truth — redundant checks like `isComplete` or `insuranceBet > 0` were omitted since the engine is responsible for transitioning phase correctly
+- Split uses same-value (not same-rank) — Vegas-style allows splitting any two 10-value cards (e.g. J+Q)
+- Surrender is late surrender only — blocked on split hands, only available on first action (2 cards)
+- Double after split is allowed — standard Vegas behavior; ace split restriction (one card only) is handled by the engine marking those hands complete, not by `canDouble`
+- Insurance minimum is `Math.floor(currentBet / 2)` — casinos deal in whole chips, no fractional bets
+
+### Functions
+- `canDouble(state)` — phase is player-turn, RULES.allowDouble, exactly 2 cards, bankroll >= hand bet
+- `canSplit(state)` — phase is player-turn, RULES.allowSplit, exactly 2 cards, same card value, bankroll >= hand bet
+- `canSurrender(state)` — phase is player-turn, RULES.allowSurrender, exactly 2 cards, not a split hand
+- `canTakeInsurance(state)` — phase is insurance, bankroll >= floor(currentBet / 2)
+
+---
+
 ## `src/engine/` — remaining files (not started)
 
-- `rules.ts` — action legality (canHit, canStand, canDouble, canSplit, canSurrender, canTakeInsurance)
 - `dealer.ts` — dealer play logic
 - `settle.ts` — round settlement and payout logic
 - `recommendation.ts` — basic strategy recommendation engine

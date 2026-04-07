@@ -1,6 +1,6 @@
 import { Card, DealerHand, PlayerHand } from "./types";
 
-function cardValue(card: Card): number {
+export function cardValue(card: Card): number {
     if (card.rank === "A") {
         return 11;
     }
