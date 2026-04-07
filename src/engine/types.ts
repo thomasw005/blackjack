@@ -62,7 +62,7 @@ export interface Recommendation {
     reason: string;
 }
 
-export interface Ruleset {
+export interface Rules {
     numDecks: number;
     dealerHitsS17: boolean;
     blackjackPayout: number;
@@ -70,4 +70,10 @@ export interface Ruleset {
     allowSplit: boolean;
     allowSurrender: boolean;
     allowDouble: boolean;
+    reshufflePercent: number;
+}
+
+export interface Shoe {
+    cards: Card[];
+    discardPile: Card[];
 }
