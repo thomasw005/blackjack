@@ -32,7 +32,7 @@ src/
     constants.ts                (complete)
     types.ts                    (complete)
     shoe.ts                     (complete)
-    hand.ts                     (empty)
+    hand.ts                     (complete)
     rules.ts                    (empty)
     dealer.ts                   (empty)
     settle.ts                   (empty)
@@ -51,7 +51,8 @@ src/
 - Phase 1 (Project Setup) — complete
 - Phase 2, Step 5 (Types) — complete
 - Phase 2, Step 6 (Shoe) — complete
-- Phase 2, Steps 7–11 — not started
+- Phase 2, Step 7 (Hand value logic) — complete
+- Phase 2, Steps 8–11 — not started
 
 ---
 
@@ -113,9 +114,10 @@ All shoe-related logic. Imports `RULES`, `RANKS`, `SUITS` from `constants.ts`.
 - Calls `shuffle(cards)` in place before returning
 - Returns `{ cards, discardPile: [] }`
 
-**`shuffle(cards: Card[]): void`**
+**`shuffle(cards: Card[]): void`** *(private)*
 - Fisher-Yates algorithm — mutates the array in place, returns void
 - Loops backwards, swaps each element with a random earlier element
+- Not exported — callers should use `createShoe` or `reshuffleIfNeeded`
 
 **`drawCard(shoe: Shoe): Card`**
 - Removes and returns the first card from `shoe.cards` using `.shift()`
@@ -130,9 +132,28 @@ All shoe-related logic. Imports `RULES`, `RANKS`, `SUITS` from `constants.ts`.
 
 ---
 
+---
+
+## `src/engine/hand.ts`
+
+Hand evaluation logic. Imports `Card`, `PlayerHand`, `DealerHand` from `types.ts`.
+
+### Design decisions
+- `cardValue` is a private helper (not exported) — only `hand.ts` internals need it
+- `isSoft` computes a hard total (all aces as 1) then checks if adding 10 stays ≤ 21 — correctly handles multiple aces
+- `isBlackjack` uses `"isSplit" in hand` to narrow the union type before checking `isSplit`, since `DealerHand` does not have that property
+- A split hand that reaches 21 is not blackjack — `isSplit` check guards this
+
+### Functions
+- `getHandValue(hand)` — sums card values with aces as 11, flips aces to 1 (subtract 10) while total > 21
+- `isSoft(hand)` — returns true if hand has an ace and hard total + 10 ≤ 21
+- `isBlackjack(hand)` — exactly 2 cards, not a split hand, total equals 21
+- `isBust(hand)` — returns `getHandValue(hand) > 21`
+
+---
+
 ## `src/engine/` — remaining files (not started)
 
-- `hand.ts` — hand value logic (getHandValue, isSoft, isBlackjack, isBust)
 - `rules.ts` — action legality (canHit, canStand, canDouble, canSplit, canSurrender, canTakeInsurance)
 - `dealer.ts` — dealer play logic
 - `settle.ts` — round settlement and payout logic
