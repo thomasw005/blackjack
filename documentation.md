@@ -55,7 +55,8 @@ src/
 - Phase 2, Step 8 (Action legality) — complete
 - Phase 2, Step 9 (Round flow — dealer) — complete
 - Phase 2, Step 10 (Settle) — complete
-- Phase 2, Steps 9 (startRound, applyPlayerAction, advanceToNextHand), 11 — not started
+- Phase 2, Step 9 (startRound, applyPlayerAction, advanceToNextHand) — complete
+- Phase 2, Step 11 (tests) — not started
 
 ---
 
@@ -83,7 +84,7 @@ All core TypeScript types. Every other engine file imports from here.
 - `PlayerHand` — `{ cards, bet, doubled, isSplit, isComplete, result }`
 - `DealerHand` — `{ cards, holeCardRevealed }`
 - `GameState` — `{ playerHands, dealerHand, activeHandIndex, phase, bankroll, currentBet, insuranceOffered, insuranceBet }`
-- `ActionType` — `"hit" | "stand" | "double" | "split" | "surrender" | "insurance"`
+- `ActionType` — `"hit" | "stand" | "double" | "split" | "surrender" | "insurance" | "decline-insurance"`
 - `Recommendation` — `{ action: ActionType; reason: string }`
 - `Rules` — `{ numDecks, dealerHitsS17, blackjackPayout, insurancePayout, allowSplit, allowSurrender, allowDouble, reshufflePercent }`
 - `Shoe` — `{ cards: Card[]; discardPile: Card[] }`
@@ -207,6 +208,28 @@ Round settlement and payout logic. Imports `getHandValue`, `isBlackjack`, `isBus
 - `settleHand(playerHand, dealerHand)` *(private)* — sets `playerHand.result` based on bust, blackjack, and total comparisons
 - `payout(playerHand)` *(private)* — returns net bankroll change: +bet for win, -bet for lose, 0 for push, +1.5x for blackjack, -0.5x for surrender
 - `settleRound(state)` — loops all player hands, calls settleHand then payout, updates `state.bankroll`
+
+---
+
+---
+
+## `src/engine/round.ts`
+
+Round flow logic. Imports `drawCard`, `reshuffleIfNeeded` from `shoe.ts`, `isBlackjack`, `isBust` from `hand.ts`.
+
+### Design decisions
+- `startRound` takes `bet: number`, not `ActionType` — the bet is the only input needed to begin a round
+- Dealing order is P1 → D1 → P2 → D2, matching standard casino procedure; `dealerHand.cards[0]` is the upcard, `cards[1]` is the hole card
+- Insurance phase takes priority over player blackjack — if upcard is Ace, insurance always runs first
+- Player blackjack with a non-ace upcard skips to `"dealer-turn"` immediately, hand marked `isComplete`
+- Split aces receive one card each and are immediately marked `isComplete` — no further player action allowed
+- `advanceToNextHand` uses `findIndex` to find the next incomplete hand after `activeHandIndex`; if none found, transitions to `"dealer-turn"`
+- `decline-insurance` is a distinct `ActionType` — kept separate from `insurance` for explicit intent
+
+### Functions
+- `startRound(state, shoe, bet)` — reshuffles if needed, deals cards, deducts bet, sets phase
+- `applyPlayerAction(state, shoe, action)` — handles hit/stand/double/split/surrender/insurance/decline-insurance for the active hand
+- `advanceToNextHand(state)` — moves to next incomplete hand or transitions to dealer turn
 
 ---
 

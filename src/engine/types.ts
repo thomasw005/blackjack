@@ -55,7 +55,8 @@ export type ActionType =
     | "double"
     | "split"
     | "surrender"
-    | "insurance";
+    | "insurance"
+    | "decline-insurance";
 
 export interface Recommendation {
     action: ActionType;
