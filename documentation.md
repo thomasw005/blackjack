@@ -56,7 +56,7 @@ src/
 - Phase 2, Step 9 (Round flow — dealer) — complete
 - Phase 2, Step 10 (Settle) — complete
 - Phase 2, Step 9 (startRound, applyPlayerAction, advanceToNextHand) — complete
-- Phase 2, Step 11 (tests) — not started
+- Phase 2, Step 11 (tests) — partial: hand.ts covered (19 tests), remaining engine tests skipped for now
 
 ---
 
@@ -230,6 +230,12 @@ Round flow logic. Imports `drawCard`, `reshuffleIfNeeded` from `shoe.ts`, `isBla
 - `startRound(state, shoe, bet)` — reshuffles if needed, deals cards, deducts bet, sets phase
 - `applyPlayerAction(state, shoe, action)` — handles hit/stand/double/split/surrender/insurance/decline-insurance for the active hand
 - `advanceToNextHand(state)` — moves to next incomplete hand or transitions to dealer turn
+
+---
+
+## `src/engine/__tests__/hand.test.ts`
+
+19 tests covering all functions in `hand.ts`: `cardValue`, `getHandValue`, `isSoft`, `isBlackjack`, `isBust`.
 
 ---
 
