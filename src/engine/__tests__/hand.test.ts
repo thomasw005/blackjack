@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cardValue, getHandValue, isSoft, isBlackjack, isBust } from "../hand";
-import { DealerHand } from "../types";
+import { DealerHand, PlayerHand } from "../types";
 
 describe("cardValue", () => {
   it("returns 11 for aces", () => {
@@ -90,6 +90,19 @@ describe("getHandValue", () => {
     };
     expect(getHandValue(hand)).toBe(25);
   });
+
+  it("returns 13 for three aces", () => {
+    const hand: DealerHand = {
+        cards: [
+            { rank: "A", suit: "hearts" },
+            { rank: "A", suit: "spades" },
+            { rank: "A", suit: "clubs" }
+        ],
+        holeCardRevealed: true
+    };
+    expect(getHandValue(hand)).toBe(13);
+  });
+
 });
 
 describe("isSoft", () => {
@@ -170,6 +183,21 @@ describe("isBlackjack", () => {
             { rank: "7", suit: "clubs" }
         ],
         holeCardRevealed: true
+    };
+    expect(isBlackjack(hand)).toBe(false);
+  });
+
+  it("returns false for a split hand", () => {
+    const hand: PlayerHand = {
+        cards: [
+            { rank: "A", suit: "hearts" },
+            { rank: "K", suit: "spades" }
+        ],
+        bet: 100,
+        doubled: false,
+        isComplete: false,
+        result: null,
+        isSplit: true
     };
     expect(isBlackjack(hand)).toBe(false);
   });
