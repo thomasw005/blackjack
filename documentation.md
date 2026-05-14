@@ -56,7 +56,8 @@ src/
 - Phase 2, Step 10 (Settle) — complete
 - Phase 2, Step 9 (startRound, applyPlayerAction, advanceToNextHand) — complete
 - Phase 2, Step 11 (tests) — complete: all engine files covered (93 tests across 6 test files)
-- Phase 3, Step 12 (Supabase setup) — in progress: project created, @supabase/supabase-js installed, .env.local configured (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY). Database schema not yet created.
+- Phase 3, Step 12 (Database schema) — complete: Supabase project created, @supabase/supabase-js installed, .env.local configured, schema created with RLS enabled.
+- Phase 4 (Auth) — complete: @supabase/ssr installed, client/server Supabase helpers created, middleware wired up, auth.ts and db.ts written. Login, signup, check-email, and game pages built and tested.
 
 ---
 
@@ -263,3 +264,49 @@ All test files use helper factory functions (`makeHand`, `makeSplitHand`, `makeS
 ## `src/engine/recommendation.ts`
 
 Deferred — skipped for v1. Will implement basic strategy logic as a later update.
+
+---
+
+## Database (Supabase)
+
+PostgreSQL via Supabase. RLS enabled on all tables. All writes go through the server using the service role key (bypasses RLS). The client uses the anon key and can only read its own rows via RLS select policies.
+
+### Design decisions
+- `profiles.id` matches `auth.users.id` — no separate join table needed
+- `wallets.balance` is an integer (whole dollars) — avoids floating point issues
+- Cards stored as `jsonb` in `hands` — no need to normalize into a separate cards table
+- `transactions` records every bankroll change for auditability and leaderboard stats
+- `surrendered` column omitted from `hands` — `result = 'surrender'` covers it (mirrors engine design)
+- `hands.split_from_hand_id` self-references `hands.id` — tracks split lineage
+- `games.outcome_summary` is `jsonb` — quick round summary without querying all hands
+- `transactions.game_id` uses `on delete set null` — transaction history survives game deletion
+
+### Tables
+- `profiles` — `id` (FK → auth.users), `username`, `created_at`
+- `wallets` — `user_id` (PK, FK → profiles), `balance`, `updated_at`
+- `games` — `id`, `user_id`, `started_at`, `ended_at`, `status` ('active'|'complete'), `outcome_summary`
+- `hands` — `id`, `game_id`, `hand_index`, `player_cards`, `dealer_cards`, `wager`, `insurance_wager`, `result`, `doubled`, `split_from_hand_id`
+- `transactions` — `id`, `user_id`, `game_id`, `type`, `amount`, `created_at`
+
+### RLS policies
+All tables have RLS enabled. Select policies let users read only their own rows. No client-side insert/update/delete policies — the server handles all writes via service role.
+
+`GRANT SELECT ON public.<table> TO authenticated` was run manually on all five tables — required because "automatically expose new tables" was disabled at project creation. Without this, RLS policies pass but table-level access is still denied (403).
+
+## Auth
+
+Supabase Auth with email/password. Email confirmation is **enabled** — users must verify their email before they can log in.
+
+### Design decisions
+- Email confirmation kept on — adds signup friction but prevents throwaway accounts
+- After signup, users are redirected to `/check-email` (not `/game`) since the session doesn't exist until confirmation
+- After sign in, users are redirected to `/game`
+- Profile + wallet are created automatically via a database trigger (`on_auth_user_created`) — no app-level code needed for this
+- Starting bankroll: $1,000
+
+### Files
+- `src/lib/supabase/client.ts` — browser Supabase client (use in `"use client"` components)
+- `src/lib/supabase/server.ts` — server Supabase client (`createClient`) and admin client (`createAdminClient` using service role key)
+- `src/middleware.ts` — refreshes auth session on every request via `supabase.auth.getUser()`
+- `src/lib/auth.ts` — server actions: `signUp`, `signIn`, `signOut`, `getUser`
+- `src/lib/db.ts` — server helpers: `getProfile`, `getWallet` (more to be added per phase)

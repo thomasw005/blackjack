@@ -222,7 +222,7 @@ Bug found and fixed during testing: `advanceToNextHand` had its if/else branches
 
 # Phase 3 — Database and Persistence
 
-## 12. Create the database schema ← NEXT
+## 12. Create the database schema ✓ COMPLETE
 At minimum, you need these tables.
 
 ### `profiles`
@@ -267,7 +267,11 @@ At minimum, you need these tables.
 ### Optional leaderboard/stat table
 You can compute leaderboard live or store aggregated stats.
 
-## 13. Store both balances and transaction history
+## 13. Store both balances and transaction history ✓ COMPLETE
+Covered by schema design — transactions table exists alongside wallets.
+
+## 14. Add row-level security / ownership rules ✓ COMPLETE
+RLS enabled on all tables with select-only policies for users. All writes are server-side via service role.
 Do not only overwrite wallet balance.
 
 Why:
@@ -289,7 +293,8 @@ The server should be the source of truth for:
 
 # Phase 4 — Authentication and User Accounts
 
-## 15. Add auth
+## 15. Add auth ✓ COMPLETE
+signUp, signIn, signOut, getUser implemented as server actions. Login, signup, check-email, and game pages built and tested end-to-end.
 Use simple auth first.
 
 Suggested features:
@@ -298,7 +303,8 @@ Suggested features:
 - log out
 - username / display name
 
-## 16. Decide starting bankroll policy
+## 16. Decide starting bankroll policy ✓ COMPLETE
+$1,000 starting bankroll. Set in the database trigger, not app code.
 Pick one and be consistent.
 
 Examples:
@@ -308,7 +314,12 @@ Examples:
 
 Do not leave this vague.
 
-## 17. Prevent basic abuse
+## 17. Prevent basic abuse ✓ COMPLETE
+Server owns all game state and writes. Client uses anon key with RLS — can only read its own rows. No client-side balance authority.
+
+---
+
+# Phase 5 — Build the UI ← NEXT
 At minimum:
 - no client-side balance authority
 - no calling payout routes directly without validation
