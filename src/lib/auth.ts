@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "./supabase/server";
+import { createClient, createAdminClient } from "./supabase/server";
 
 export async function signUp(
     email: string,
@@ -38,4 +38,15 @@ export async function getUser() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     return user;
+}
+
+export async function deleteUser(): Promise<{ error: string } | void> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not logged in" };
+
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.deleteUser(user.id);
+    if (error) return { error: error.message };
+    redirect("/signup");
 }

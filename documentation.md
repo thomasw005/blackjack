@@ -58,6 +58,7 @@ src/
 - Phase 2, Step 11 (tests) — complete: all engine files covered (93 tests across 6 test files)
 - Phase 3, Step 12 (Database schema) — complete: Supabase project created, @supabase/supabase-js installed, .env.local configured, schema created with RLS enabled.
 - Phase 4 (Auth) — complete: @supabase/ssr installed, client/server Supabase helpers created, middleware wired up, auth.ts and db.ts written. Login, signup, check-email, and game pages built and tested.
+- Phase 6 (Server/API Logic) — next: doing before Phase 5 (UI) so the API shape is known before building the UI.
 
 ---
 
@@ -300,6 +301,7 @@ Supabase Auth with email/password. Email confirmation is **enabled** — users m
 ### Design decisions
 - Email confirmation kept on — adds signup friction but prevents throwaway accounts
 - After signup, users are redirected to `/check-email` (not `/game`) since the session doesn't exist until confirmation
+- `deleteUser` requires the admin client (service role key) — Supabase has no user-facing delete endpoint. The function verifies the session first, then deletes via admin. Cascades clean up `profiles` and `wallets` automatically.
 - After sign in, users are redirected to `/game`
 - Profile + wallet are created automatically via a database trigger (`on_auth_user_created`) — no app-level code needed for this
 - Starting bankroll: $1,000
@@ -308,5 +310,5 @@ Supabase Auth with email/password. Email confirmation is **enabled** — users m
 - `src/lib/supabase/client.ts` — browser Supabase client (use in `"use client"` components)
 - `src/lib/supabase/server.ts` — server Supabase client (`createClient`) and admin client (`createAdminClient` using service role key)
 - `src/middleware.ts` — refreshes auth session on every request via `supabase.auth.getUser()`
-- `src/lib/auth.ts` — server actions: `signUp`, `signIn`, `signOut`, `getUser`
+- `src/lib/auth.ts` — server actions: `signUp`, `signIn`, `signOut`, `getUser`, `deleteUser`
 - `src/lib/db.ts` — server helpers: `getProfile`, `getWallet` (more to be added per phase)

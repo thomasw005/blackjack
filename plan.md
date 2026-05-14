@@ -319,79 +319,9 @@ Server owns all game state and writes. Client uses anon key with RLS — can onl
 
 ---
 
-# Phase 5 — Build the UI ← NEXT
-At minimum:
-- no client-side balance authority
-- no calling payout routes directly without validation
-- no trusting browser state for round outcomes
+# Phase 5 — Server/API Logic
 
----
-
-# Phase 5 — Build the UI
-
-## 18. Build pages in this order
-Do not try to build the prettiest thing first.
-
-### First
-- landing page
-- login/signup
-- game page
-
-### Then
-- leaderboard page
-- profile page
-- rules page
-
-## 19. Game UI checklist
-The game page should clearly show:
-- bankroll
-- current bet
-- current hand(s)
-- dealer upcard / dealer hand
-- whose turn it is
-- available actions
-- round result
-
-## 20. Action buttons
-You need buttons for:
-- deal / start round
-- hit
-- stand
-- double (if included in your final rules/UI)
-- split
-- surrender
-- insurance accept / decline
-- next round
-
-Buttons should disable automatically when illegal.
-
-## 21. Split-hand UI
-This is a common pain point.
-
-Make it obvious:
-- which hand is active
-- which hands are already completed
-- wager per hand
-- result per hand
-
-Do not make split hands visually confusing.
-
-## 22. Keep the UI simple and clean
-Recommended look:
-- dark felt / casino-inspired theme
-- large buttons
-- readable text
-- strong contrast
-- clear bankroll display
-- subtle card animations only
-
-Avoid overdoing animations in v1.
-
----
-
-# Phase 6 — Server/API Logic
-
-## 23. Define server actions / endpoints
+## 18. Define server actions / endpoints
 Possible actions you need:
 - create round
 - place bet
@@ -404,7 +334,7 @@ Possible actions you need:
 - fetch current state
 - fetch leaderboard
 
-## 24. Server should own the game state
+## 19. Server should own the game state
 Do not let the browser fully control round state.
 
 Recommended approach:
@@ -415,13 +345,83 @@ Recommended approach:
 
 This keeps the project much more legit.
 
-## 25. Use transactions for bankroll updates
+## 20. Use transactions for bankroll updates
 When resolving a round:
 - write transaction records
 - update wallet balance
 - mark game complete
 
 These should be done safely together.
+
+---
+
+# Phase 6 — Build the UI ← NEXT
+At minimum:
+- no client-side balance authority
+- no calling payout routes directly without validation
+- no trusting browser state for round outcomes
+
+---
+
+# Phase 6 — Build the UI
+
+## 21. Build pages in this order
+Do not try to build the prettiest thing first.
+
+### First
+- landing page
+- login/signup
+- game page
+
+### Then
+- leaderboard page
+- profile page
+- rules page
+
+## 22. Game UI checklist
+The game page should clearly show:
+- bankroll
+- current bet
+- current hand(s)
+- dealer upcard / dealer hand
+- whose turn it is
+- available actions
+- round result
+
+## 23. Action buttons
+You need buttons for:
+- deal / start round
+- hit
+- stand
+- double (if included in your final rules/UI)
+- split
+- surrender
+- insurance accept / decline
+- next round
+
+Buttons should disable automatically when illegal.
+
+## 24. Split-hand UI
+This is a common pain point.
+
+Make it obvious:
+- which hand is active
+- which hands are already completed
+- wager per hand
+- result per hand
+
+Do not make split hands visually confusing.
+
+## 25. Keep the UI simple and clean
+Recommended look:
+- dark felt / casino-inspired theme
+- large buttons
+- readable text
+- strong contrast
+- clear bankroll display
+- subtle card animations only
+
+Avoid overdoing animations in v1.
 
 ---
 
@@ -678,4 +678,3 @@ Your best version of this project is **not** the most complicated version. It is
 - polished enough for portfolio use
 
 Prioritize correctness of rules, clarity of architecture, and a smooth gameplay loop before fancy extras.
-
