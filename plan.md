@@ -222,7 +222,7 @@ Bug found and fixed during testing: `advanceToNextHand` had its if/else branches
 
 # Phase 3 — Database and Persistence
 
-## 12. Create the database schema
+## 12. Create the database schema ← NEXT
 At minimum, you need these tables.
 
 ### `profiles`

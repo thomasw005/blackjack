@@ -56,6 +56,7 @@ src/
 - Phase 2, Step 10 (Settle) — complete
 - Phase 2, Step 9 (startRound, applyPlayerAction, advanceToNextHand) — complete
 - Phase 2, Step 11 (tests) — complete: all engine files covered (93 tests across 6 test files)
+- Phase 3, Step 12 (Supabase setup) — in progress: project created, @supabase/supabase-js installed, .env.local configured (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY). Database schema not yet created.
 
 ---
 
