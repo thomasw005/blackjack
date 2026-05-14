@@ -118,8 +118,8 @@ export function advanceToNextHand(state: GameState) {
     );
 
     if (nextIndex === -1) {
-        state.activeHandIndex = nextIndex;
-    } else {
         state.phase = "dealer-turn";
+    } else {
+        state.activeHandIndex = nextIndex;
     }
 }

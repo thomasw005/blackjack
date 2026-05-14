@@ -26,7 +26,6 @@ src/
     Card.tsx                    (stub)
     Hand.tsx                    (stub)
     LeaderboardTable.tsx        (stub)
-    RecommendationPanel.tsx     (stub)
     Table.tsx                   (stub)
   engine/
     constants.ts                (complete)
@@ -36,7 +35,7 @@ src/
     rules.ts                    (complete)
     dealer.ts                   (complete)
     settle.ts                   (complete)
-    recommendation.ts           (empty)
+    recommendation.ts           (deferred — skipped for now, to be added later)
   lib/
     auth.ts                     (empty)
     db.ts                       (empty)
@@ -56,7 +55,7 @@ src/
 - Phase 2, Step 9 (Round flow — dealer) — complete
 - Phase 2, Step 10 (Settle) — complete
 - Phase 2, Step 9 (startRound, applyPlayerAction, advanceToNextHand) — complete
-- Phase 2, Step 11 (tests) — partial: hand.ts covered (19 tests), remaining engine tests skipped for now
+- Phase 2, Step 11 (tests) — complete: all engine files covered (93 tests across 6 test files)
 
 ---
 
@@ -85,7 +84,7 @@ All core TypeScript types. Every other engine file imports from here.
 - `DealerHand` — `{ cards, holeCardRevealed }`
 - `GameState` — `{ playerHands, dealerHand, activeHandIndex, phase, bankroll, currentBet, insuranceOffered, insuranceBet }`
 - `ActionType` — `"hit" | "stand" | "double" | "split" | "surrender" | "insurance" | "decline-insurance"`
-- `Recommendation` — `{ action: ActionType; reason: string }`
+- `Recommendation` — `{ action: ActionType; reason: string }` *(type retained for future use)*
 - `Rules` — `{ numDecks, dealerHitsS17, blackjackPayout, insurancePayout, allowSplit, allowSurrender, allowDouble, reshufflePercent }`
 - `Shoe` — `{ cards: Card[]; discardPile: Card[] }`
 
@@ -233,12 +232,33 @@ Round flow logic. Imports `drawCard`, `reshuffleIfNeeded` from `shoe.ts`, `isBla
 
 ---
 
-## `src/engine/__tests__/hand.test.ts`
+## `src/engine/__tests__/`
 
-19 tests covering all functions in `hand.ts`: `cardValue`, `getHandValue`, `isSoft`, `isBlackjack`, `isBust`.
+All test files use helper factory functions (`makeHand`, `makeSplitHand`, `makeShoe`, `makeState`, `makePlayerHand`) to avoid inline object literals. Rule-derived values (`TOTAL_CARDS`, `RESHUFFLE_THRESHOLD`, `RULES.blackjackPayout`, etc.) are used throughout so tests adapt automatically if constants change.
+
+### `hand.test.ts`
+19 tests. Helpers: `makeHand(...ranks)` (DealerHand), `makeSplitHand(...ranks)` (PlayerHand with isSplit=true). Covers `cardValue`, `getHandValue`, `isSoft`, `isBlackjack`, `isBust`.
+
+### `shoe.test.ts`
+11 tests. Helper: `makeShoe(numCards, numDiscard?)`. Covers `createShoe` (card/rank/suit counts), `drawCard` (remove + throw on empty), `reshuffleIfNeeded` (threshold boundary, discard merge, empty discard edge case).
+
+### `rules.test.ts`
+21 tests. Helper: `makeState(overrides?)`. Covers `canDouble`, `canSplit`, `canSurrender`, `canTakeInsurance` — including phase guards, same-value split (J+Q), split hand blocking surrender, exact bankroll boundaries (including exact-match for canSplit), and odd-bet floor for insurance.
+
+### `dealer.test.ts`
+8 tests. Helper: `makeState(dealerCards)`. Covers `playDealerHand` — hole card reveal, hard 17 stand, soft 17 hit (H17 rule), soft 18 stand, multi-card draw sequences, bust.
+
+### `settle.test.ts`
+9 tests. Helpers: `makePlayerHand(overrides?)`, `makeState(playerHand, dealerCards, bankroll?)`. Covers `settleRound` — all result types, 3:2 blackjack payout, player-bust-loses-even-if-dealer-busts, multi-hand settlement.
+
+### `round.test.ts`
+22 tests. Helpers: `makeShoe(...topCards)` (with 80-card padding to prevent reshuffle), `makeState(overrides?)`, `makePlayerHand(cards, bet?, isComplete?)`. Covers `startRound` (deal order, phase transitions, insurance priority), `applyPlayerAction` (all 7 action types), `advanceToNextHand` (single hand, multi-hand, skip-complete).
+
+### Bug fixed during testing
+`advanceToNextHand` in `round.ts` had its `if`/`else` branches swapped — when no incomplete hands remained it set `activeHandIndex = -1` instead of transitioning to `"dealer-turn"`, and vice versa.
 
 ---
 
-## `src/engine/` — remaining files (not started)
+## `src/engine/recommendation.ts`
 
-- `recommendation.ts` — basic strategy recommendation engine
+Deferred — skipped for v1. Will implement basic strategy logic as a later update.

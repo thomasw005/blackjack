@@ -1,7 +1,7 @@
 # Blackjack Website — Full To-Do / Build Plan
 
 ## Project Goal
-Build a polished blackjack website for portfolio use and for friends to play. The site should support realistic Vegas-style blackjack rules, persistent bankrolls, user accounts, a leaderboard, and a reveal-only recommendation button.
+Build a polished blackjack website for portfolio use and for friends to play. The site should support realistic Vegas-style blackjack rules, persistent bankrolls, user accounts, and a leaderboard.
 
 ---
 
@@ -69,7 +69,6 @@ Use the simple, modern stack:
     Hand.tsx
     BankrollDisplay.tsx
     ActionButtons.tsx
-    RecommendationPanel.tsx
     LeaderboardTable.tsx
   /lib
     db.ts
@@ -83,7 +82,6 @@ Use the simple, modern stack:
     rules.ts
     dealer.ts
     settle.ts
-    recommendation.ts
   /styles
 ```
 
@@ -205,76 +203,26 @@ You need a clear round lifecycle.
 ### Dealer soft 17
 You already chose H17, so your dealer logic must hit soft 17.
 
-## 11. Write tests for engine logic
-Before building the full UI, test these cases:
-- blackjack vs non-blackjack
-- ace value switching correctly
-- split behavior
-- surrender returns half bet
-- insurance resolves correctly
-- dealer hits soft 17
-- dealer stands above 17
-- bust cases
-- push cases
-- reshuffle logic
+## 11. Write tests for engine logic ✓ COMPLETE
+93 tests across 6 files (hand, shoe, rules, dealer, settle, round). All cases covered:
+- blackjack vs non-blackjack ✓
+- ace value switching correctly ✓
+- split behavior (including split aces) ✓
+- surrender returns half bet ✓
+- insurance resolves correctly ✓
+- dealer hits soft 17 ✓
+- dealer stands above 17 ✓
+- bust cases ✓
+- push cases ✓
+- reshuffle logic ✓
 
-This phase is worth real effort. Your whole project depends on it.
-
----
-
-# Phase 3 — Recommendation Engine
-
-## 12. Decide the recommendation scope
-Keep this realistic and manageable.
-
-### Recommendation should consider
-- player hand total / pair / soft hand
-- dealer upcard
-- whether split is available
-- whether surrender is available
-- whether insurance is offered
-- ruleset
-
-### Recommendation should **not**
-- auto-play the hand
-- secretly change the game
-- depend on hidden cheating logic
-
-## 13. Create recommendation output format
-Return more than just one word.
-
-Recommended structure:
-- recommended action
-- short explanation
-- optional alternatives
-
-Example:
-- Action: Stand
-- Reason: Hard 17 against dealer 10 is a stand under this ruleset.
-
-## 14. Implement recommendation as separate logic
-Do **not** hardcode it into buttons.
-
-### Functions to implement
-- `getRecommendation(hand, dealerUpcard, ruleset, availableActions)`
-- `formatRecommendation(result)`
-
-## 15. Reveal recommendation button behavior
-The player should choose whether to see it.
-
-Suggested behavior:
-- Button starts hidden or inactive until the hand starts
-- Clicking it reveals recommendation for current hand only
-- UI marks that advice has been revealed
-
-Optional stat to track later:
-- whether the player followed the recommendation
+Bug found and fixed during testing: `advanceToNextHand` had its if/else branches swapped.
 
 ---
 
-# Phase 4 — Database and Persistence
+# Phase 3 — Database and Persistence
 
-## 16. Create the database schema
+## 12. Create the database schema
 At minimum, you need these tables.
 
 ### `profiles`
@@ -319,7 +267,7 @@ At minimum, you need these tables.
 ### Optional leaderboard/stat table
 You can compute leaderboard live or store aggregated stats.
 
-## 17. Store both balances and transaction history
+## 13. Store both balances and transaction history
 Do not only overwrite wallet balance.
 
 Why:
@@ -328,7 +276,7 @@ Why:
 - supports better leaderboard metrics
 - helps if something goes wrong
 
-## 18. Add row-level security / ownership rules
+## 14. Add row-level security / ownership rules
 Every player should only be able to modify their own records.
 
 The server should be the source of truth for:
@@ -339,9 +287,9 @@ The server should be the source of truth for:
 
 ---
 
-# Phase 5 — Authentication and User Accounts
+# Phase 4 — Authentication and User Accounts
 
-## 19. Add auth
+## 15. Add auth
 Use simple auth first.
 
 Suggested features:
@@ -350,7 +298,7 @@ Suggested features:
 - log out
 - username / display name
 
-## 20. Decide starting bankroll policy
+## 16. Decide starting bankroll policy
 Pick one and be consistent.
 
 Examples:
@@ -360,7 +308,7 @@ Examples:
 
 Do not leave this vague.
 
-## 21. Prevent basic abuse
+## 17. Prevent basic abuse
 At minimum:
 - no client-side balance authority
 - no calling payout routes directly without validation
@@ -368,9 +316,9 @@ At minimum:
 
 ---
 
-# Phase 6 — Build the UI
+# Phase 5 — Build the UI
 
-## 22. Build pages in this order
+## 18. Build pages in this order
 Do not try to build the prettiest thing first.
 
 ### First
@@ -383,7 +331,7 @@ Do not try to build the prettiest thing first.
 - profile page
 - rules page
 
-## 23. Game UI checklist
+## 19. Game UI checklist
 The game page should clearly show:
 - bankroll
 - current bet
@@ -391,10 +339,9 @@ The game page should clearly show:
 - dealer upcard / dealer hand
 - whose turn it is
 - available actions
-- revealed recommendation area
 - round result
 
-## 24. Action buttons
+## 20. Action buttons
 You need buttons for:
 - deal / start round
 - hit
@@ -403,12 +350,11 @@ You need buttons for:
 - split
 - surrender
 - insurance accept / decline
-- reveal recommendation
 - next round
 
 Buttons should disable automatically when illegal.
 
-## 25. Split-hand UI
+## 21. Split-hand UI
 This is a common pain point.
 
 Make it obvious:
@@ -419,7 +365,7 @@ Make it obvious:
 
 Do not make split hands visually confusing.
 
-## 26. Keep the UI simple and clean
+## 22. Keep the UI simple and clean
 Recommended look:
 - dark felt / casino-inspired theme
 - large buttons
@@ -432,13 +378,12 @@ Avoid overdoing animations in v1.
 
 ---
 
-# Phase 7 — Server/API Logic
+# Phase 6 — Server/API Logic
 
-## 27. Define server actions / endpoints
+## 23. Define server actions / endpoints
 Possible actions you need:
 - create round
 - place bet
-- reveal recommendation
 - hit
 - stand
 - double
@@ -448,7 +393,7 @@ Possible actions you need:
 - fetch current state
 - fetch leaderboard
 
-## 28. Server should own the game state
+## 24. Server should own the game state
 Do not let the browser fully control round state.
 
 Recommended approach:
@@ -459,7 +404,7 @@ Recommended approach:
 
 This keeps the project much more legit.
 
-## 29. Use transactions for bankroll updates
+## 25. Use transactions for bankroll updates
 When resolving a round:
 - write transaction records
 - update wallet balance
@@ -469,9 +414,9 @@ These should be done safely together.
 
 ---
 
-# Phase 8 — Leaderboard and Stats
+# Phase 7 — Leaderboard and Stats
 
-## 30. Decide what the leaderboard means
+## 26. Decide what the leaderboard means
 Do not only show “who has most money” unless you are okay with that being the main metric.
 
 Recommended leaderboard metrics:
@@ -483,24 +428,22 @@ Recommended leaderboard metrics:
 - pushes
 - win rate
 
-## 31. Add profile stats
+## 27. Add profile stats
 Nice portfolio touch:
 - total hands played
-- favorite action maybe later
 - average bet
 - biggest win
 - longest streak
-- recommendation-follow rate (optional)
 
-## 32. Keep leaderboard queries efficient
+## 28. Keep leaderboard queries efficient
 If needed later, create aggregate views or cached stats.
 But in v1, simple queries are fine.
 
 ---
 
-# Phase 9 — Testing and Bug-Proofing
+# Phase 8 — Testing and Bug-Proofing
 
-## 33. Manually test all critical flows
+## 29. Manually test all critical flows
 You need to test:
 - normal hit/stand flow
 - blackjack on deal
@@ -514,7 +457,7 @@ You need to test:
 - reshuffle mid-session
 - logout/login persistence
 
-## 34. Test bad inputs
+## 30. Test bad inputs
 Try to break your own app:
 - hit after bust
 - split invalid cards
@@ -523,20 +466,20 @@ Try to break your own app:
 - spam buttons quickly
 - refresh page mid-round
 
-## 35. Add guardrails in UI and server
+## 31. Add guardrails in UI and server
 Both should help prevent bad states, but server rules matter more.
 
 ---
 
-# Phase 10 — Deployment
+# Phase 9 — Deployment
 
-## 36. Set up production services
+## 32. Set up production services
 - Create Supabase project
 - Create production database schema
 - Add environment variables in host dashboard
 - Connect GitHub repo to Vercel
 
-## 37. Deploy early, not only at the end
+## 33. Deploy early, not only at the end
 Deploy once the base app works.
 Then keep improving it.
 
@@ -546,7 +489,7 @@ This helps you catch:
 - server/client mismatches
 - database permission errors
 
-## 38. Set up basic monitoring/logging
+## 34. Set up basic monitoring/logging
 At minimum, be able to see:
 - API/server errors
 - failed auth flows
@@ -554,9 +497,9 @@ At minimum, be able to see:
 
 ---
 
-# Phase 11 — Portfolio Polish
+# Phase 10 — Portfolio Polish
 
-## 39. Make the project presentable
+## 35. Make the project presentable
 Add:
 - landing page with project description
 - rules page
@@ -564,7 +507,7 @@ Add:
 - polished README
 - short architecture explanation
 
-## 40. README checklist
+## 36. README checklist
 Your README should include:
 - what the project is
 - tech stack
@@ -575,13 +518,12 @@ Your README should include:
 - interesting features
 - future improvements
 
-## 41. Good portfolio talking points
+## 37. Good portfolio talking points
 When describing the project, emphasize:
 - full-stack architecture
 - persistent user state
 - transaction-safe bankroll tracking
 - server-side validation
-- recommendation engine
 - leaderboard analytics
 
 ---
@@ -603,33 +545,30 @@ Implement the blackjack engine completely in isolation.
 Test engine logic thoroughly.
 
 ## Step 5
-Implement recommendation logic.
-
-## Step 6
 Create DB schema.
 
-## Step 7
+## Step 6
 Add auth and user profiles.
 
-## Step 8
+## Step 7
 Add bankroll persistence and transaction logging.
 
-## Step 9
+## Step 8
 Build basic game UI.
 
-## Step 10
+## Step 9
 Connect UI to server actions.
 
-## Step 11
+## Step 10
 Add split / insurance / surrender UI handling.
 
-## Step 12
+## Step 11
 Add leaderboard and stats pages.
 
-## Step 13
+## Step 12
 Deploy to production.
 
-## Step 14
+## Step 13
 Polish visuals, README, and portfolio presentation.
 
 ---
@@ -643,10 +582,10 @@ Polish visuals, README, and portfolio presentation.
 - hit / stand / split / surrender / insurance
 - dealer H17
 - 6-deck shoe with reshuffle
-- recommendation reveal button
 - leaderboard
 
 ## Later / stretch goals
+- recommendation reveal button and basic strategy engine
 - live multiplayer tables
 - chat
 - tournaments
@@ -708,15 +647,11 @@ Blackjack looks simple until you implement every rule interaction. Plan for this
 - test edge cases
 
 ## Day 5
-- implement recommendation engine
-- test recommendation outputs
-
-## Day 6
 - set up Supabase
 - create schema
 - connect auth
 
-## Day 7
+## Day 6
 - build basic game page wired to backend
 
 ---
