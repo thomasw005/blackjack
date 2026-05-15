@@ -22,21 +22,21 @@ src/
     email-confirmed/page.tsx    (complete — shown after signup email confirmation)
     email-changed/page.tsx      (complete — shown after email change confirmation, reads ?message= param)
     forgot-password/page.tsx    (complete — sends password reset email)
-    game/page.tsx               (complete — full game UI with account/rules/leaderboard modals)
-    leaderboard/                (empty — future standalone leaderboard page)
+    game/page.tsx               (complete — full game UI; Rules/Leaderboard are nav links to standalone pages)
+    leaderboard/page.tsx        (complete — standalone leaderboard page, client component)
     login/page.tsx              (complete — reads ?error=invalid-link from URL)
     profile/                    (empty — future profile page)
-    rules/                      (empty — future standalone rules page)
+    rules/page.tsx              (complete — standalone rules page, server component, virtual currency disclaimer)
     signup/page.tsx             (complete — pre-checks username uniqueness before calling signUp)
     update-password/page.tsx    (complete — used after password reset link, redirects client-side)
     globals.css                 (complete — CSS variables design system)
     icon.svg                    (complete — green ♠ favicon)
-    layout.tsx                  (complete — title "WilsonBlackjack", Google H5 Games Ads script injected when NEXT_PUBLIC_ADSENSE_CLIENT is set)
+    layout.tsx                  (complete — title "WilsonBlackjack", Vercel Analytics, google-adsense-account meta tag, H5 Games Ads script injected when NEXT_PUBLIC_ADSENSE_CLIENT is set)
     page.tsx                    (redirected by middleware)
   components/
     AccountModal.tsx            (complete — overlay with username/email/password/delete account)
-    RulesModal.tsx              (complete — static rules overlay, all game rules sectioned)
-    LeaderboardModal.tsx        (complete — gains/losses/rich list with daily/weekly/monthly tabs)
+    RulesModal.tsx              (unused — superseded by standalone /rules page)
+    LeaderboardModal.tsx        (unused — superseded by standalone /leaderboard page)
     AdOverlay.tsx               (complete — rewarded ad overlay; uses Google H5 Games API, falls back to "unavailable" if no ad loads)
   engine/
     constants.ts                (complete)
@@ -68,10 +68,11 @@ src/
 - Phase 3 (Database) — complete
 - Phase 4 (Auth) — complete
 - Phase 5 (API) — complete
-- Phase 6 (UI) — complete (game page, all auth pages, account/rules/leaderboard/ad modals)
-- Phase 7 (Leaderboard/Stats) — API complete, modal complete; standalone page not built
+- Phase 6 (UI) — complete (game page, all auth pages, account modal, ad overlay)
+- Phase 7 (Leaderboard/Stats) — complete (API + standalone /leaderboard page)
 - Phase 8 (Testing) — engine tests complete; manual UI testing ongoing
-- Phase 9 (Deployment) — not started
+- Phase 9 (Deployment) — in progress (deployed to Vercel at wilsonblackjack.com; AdSense applied for)
+- Phase 10 (Portfolio Polish) — in progress (rules page built; README not done)
 
 ### DB migration required (run in Supabase SQL editor if not already done):
 ```sql
@@ -218,10 +219,10 @@ AUTH_ONLY  = ["/login", "/signup", "/check-email", "/forgot-password"]
 Client component. Loads state from `/api/game/state` on mount (bankroll, username, email, active game if any).
 
 ### Features
-- **Header**: "♠ WilsonBlackjack" logo + live bankroll + `+` button (opens ad overlay) on the left; Rules, Leaderboard, username, Sign out on the right
-- **Modals**: `activeModal` state (`'account' | 'rules' | 'leaderboard' | null`) + `showAd` boolean — only one open at a time
+- **Header**: `♠` logo (full "WilsonBlackjack" text hidden on mobile) + live bankroll + `+` ad button + muted "github" link on the left; Rules link, Leaderboard link (both hidden on mobile), username button, Sign out on the right
+- **Modals**: `activeModal` state (`'account' | null`) + `showAd` boolean — Rules and Leaderboard navigate to standalone pages instead of opening modals
 - **Ad overlay**: opens via `+` button next to bankroll, or auto-opens when bet > bankroll on Deal. Uses Google H5 Games rewarded ad API (`adBreak`). 6s timeout shows "No ad available" if nothing loads. On `adViewed`, calls `/api/reward` to credit $10
-- **Table panel**: dealer section + player section inside a surface card; controls live inside so table size never changes between states
+- **Table panel**: dealer section (flex-1, justify-center) + divider + player section (flex-1, justify-center) — each half fills its space and centers content, consistent at all game states
 - **Cards**: `CardView` — white cards with corner rank/suit pips and large center suit symbol. `HiddenCard` — dark card with `?`. `compact` prop for split hands
 - **Hand totals**: displayed below cards, showing "7 or 17" format for soft hands
 - **Split hands**: rendered side-by-side with `flex-row`; active hand highlighted with brand border + green tint
@@ -231,6 +232,29 @@ Client component. Loads state from `/api/game/state` on mount (bankroll, usernam
 - **Betting**: `$` prefix input (type=text, inputMode=numeric), minimum $10 enforced on blur + backend. Deal button → starts game
 - **Between rounds**: placeholder elements maintain table layout; Next Round → clears state
 - **Hash fragment handler**: detects `#message=` from Supabase email change callbacks and redirects to `/email-changed?message=...`
+
+---
+
+## Rules Page (`src/app/rules/page.tsx`)
+
+Server component. Publicly accessible (not behind auth). Static content — no API calls.
+
+- Sticky header with logo + "Play" button linking back to `/game`
+- Virtual currency disclaimer banner
+- All rules in a single surface card: Deck, Card Values, Payouts, Dealer Rules, Player Actions, Blackjack, Betting sections
+- Exists primarily for SEO and AdSense content requirements
+
+---
+
+## Leaderboard Page (`src/app/leaderboard/page.tsx`)
+
+Client component. Protected route (requires auth via middleware). Same logic and UI as the old `LeaderboardModal` but rendered as a full page.
+
+- Sticky header with logo + "Play" button linking back to `/game`
+- Fetches `/api/leaderboard` on mount
+- Main tabs: Rich List / Gains / Losses
+- Period sub-tabs for Gains and Losses: Today / This Week / This Month
+- Top 10 entries per view with rank badges; #1 entry highlighted with brand border
 
 ---
 

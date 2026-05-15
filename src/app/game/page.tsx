@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { signOut } from "@/lib/auth";
 import AccountModal from "@/components/AccountModal";
-import RulesModal from "@/components/RulesModal";
-import LeaderboardModal from "@/components/LeaderboardModal";
 import AdOverlay from "@/components/AdOverlay";
 import { GameState, Card } from "@/engine/types";
 import { getHandValue, isSoft } from "@/engine/hand";
@@ -69,7 +68,7 @@ export default function GamePage() {
     const [bankroll, setBankroll] = useState<number | null>(null);
     const [username, setUsername] = useState<string | null>(null);
     const [email, setEmail] = useState<string | null>(null);
-    const [activeModal, setActiveModal] = useState<"account" | "rules" | "leaderboard" | null>(null);
+    const [activeModal, setActiveModal] = useState<"account" | null>(null);
     const [bet, setBet] = useState(MIN_BET);
     const [betInput, setBetInput] = useState(String(MIN_BET));
     const [loading, setLoading] = useState(false);
@@ -168,59 +167,71 @@ export default function GamePage() {
                 className="flex justify-between items-center px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl shrink-0"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
             >
-                <div className="flex items-center gap-3">
-                    <span className="text-lg font-bold tracking-tight">
-                        <span style={{ color: "var(--brand)" }}>♠</span> WilsonBlackjack
+                <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-lg font-bold tracking-tight shrink-0">
+                        <span style={{ color: "var(--brand)" }}>♠</span>
+                        <span className="hidden sm:inline"> WilsonBlackjack</span>
                     </span>
                     {bankroll !== null && (
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-semibold">
-                                <span style={{ color: "var(--muted)" }}>$</span><span style={{ color: "var(--brand)" }}>{bankroll}</span>
-                            </span>
-                            <button
-                                onClick={() => setShowAd(true)}
-                                className="w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold transition-all hover:brightness-75"
-                                style={{ background: "var(--brand)", color: "#0f0f0f" }}
-                                title="Watch an ad for +$10"
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1">
+                                <span className="text-sm font-semibold">
+                                    <span style={{ color: "var(--muted)" }}>$</span><span style={{ color: "var(--brand)" }}>{bankroll}</span>
+                                </span>
+                                <button
+                                    onClick={() => setShowAd(true)}
+                                    className="w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold transition-all hover:brightness-75"
+                                    style={{ background: "var(--brand)", color: "#0f0f0f" }}
+                                    title="Watch an ad for +$10"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <a
+                                href="https://github.com/thomasw005/blackjack"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-medium transition-all hover:opacity-100 opacity-40"
+                                style={{ color: "var(--muted)" }}
                             >
-                                +
-                            </button>
+                                GitHub
+                            </a>
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <Link
+                        href="/rules"
+                        className="hidden sm:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                        style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                    >
+                        Rules
+                    </Link>
+                    <Link
+                        href="/leaderboard"
+                        className="hidden sm:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                        style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                    >
+                        Leaderboard
+                    </Link>
+                    {username && (
                         <button
-                            onClick={() => setActiveModal("rules")}
+                            onClick={() => setActiveModal("account")}
+                            className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10 max-w-[80px] truncate sm:max-w-[120px]"
+                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                        >
+                            {username}
+                        </button>
+                    )}
+                    <form action={signOut}>
+                        <button
                             className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
                             style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                         >
-                            Rules
+                            Sign out
                         </button>
-                        <button
-                            onClick={() => setActiveModal("leaderboard")}
-                            className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
-                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
-                        >
-                            Leaderboard
-                        </button>
-                        {username && (
-                            <button
-                                onClick={() => setActiveModal("account")}
-                                className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10 max-w-[100px] truncate sm:max-w-none"
-                                style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
-                            >
-                                {username}
-                            </button>
-                        )}
-                        <form action={signOut}>
-                            <button
-                                className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
-                                style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
-                            >
-                                Sign out
-                            </button>
-                        </form>
-                    </div>
+                    </form>
+                </div>
             </header>
 
             {/* Error */}
@@ -236,9 +247,9 @@ export default function GamePage() {
                 style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
             >
                 {/* Cards area */}
-                <div className="flex-1 min-h-0 flex flex-col gap-4 sm:gap-6">
+                <div className="flex-1 min-h-0 flex flex-col gap-4">
                     {/* Dealer */}
-                    <section className="flex flex-col gap-4 items-center">
+                    <section className="flex flex-col gap-3 items-center">
                         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
                             Dealer
                         </p>
@@ -269,7 +280,7 @@ export default function GamePage() {
                     <div style={{ borderTop: "1px solid var(--border)" }} />
 
                     {/* Player hands */}
-                    <section className="flex flex-col gap-3 items-center w-full">
+                    <section className="flex-1 flex flex-col gap-3 items-center justify-center w-full">
                         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
                             Your hand
                         </p>
@@ -420,12 +431,6 @@ export default function GamePage() {
                     onClose={() => setActiveModal(null)}
                     onUsernameChange={(u) => setUsername(u)}
                 />
-            )}
-            {activeModal === "rules" && (
-                <RulesModal onClose={() => setActiveModal(null)} />
-            )}
-            {activeModal === "leaderboard" && (
-                <LeaderboardModal onClose={() => setActiveModal(null)} />
             )}
             {showAd && (
                 <AdOverlay
