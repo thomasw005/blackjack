@@ -8,18 +8,21 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [active, walletResult] = await Promise.all([
+    const [active, walletResult, profileResult] = await Promise.all([
         getActiveGame(user.id),
         supabase.from("wallets").select("balance").eq("user_id", user.id).single(),
+        supabase.from("profiles").select("username").eq("id", user.id).single(),
     ]);
 
     const walletBalance = walletResult.data?.balance ?? null;
+    const username = profileResult.data?.username ?? null;
 
-    if (!active) return NextResponse.json({ gameId: null, state: null, balance: walletBalance });
+    if (!active) return NextResponse.json({ gameId: null, state: null, balance: walletBalance, username });
 
     return NextResponse.json({
         gameId: active.id,
         state: sanitizeState(active.state.gameState),
         balance: active.state.gameState.bankroll,
+        username,
     });
 }

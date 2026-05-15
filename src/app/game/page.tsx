@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth";
 import { GameState, Card } from "@/engine/types";
 import { getHandValue, isSoft } from "@/engine/hand";
+import { getRecommendation } from "@/engine/recommendation";
 
 function handTotal(cards: Card[]): string {
     if (cards.length === 0) return "";
@@ -53,15 +54,18 @@ export default function GamePage() {
     const [gameId, setGameId] = useState<string | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [bankroll, setBankroll] = useState<number | null>(null);
+    const [username, setUsername] = useState<string | null>(null);
     const [bet, setBet] = useState(10);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showHint, setShowHint] = useState(false);
 
     useEffect(() => {
         fetch("/api/game/state")
             .then((r) => r.json())
             .then((data) => {
                 if (data.balance !== null && data.balance !== undefined) setBankroll(data.balance);
+                if (data.username) setUsername(data.username);
                 if (data.gameId && data.state) {
                     setGameId(data.gameId);
                     setGameState(data.state);
@@ -93,6 +97,7 @@ export default function GamePage() {
         if (!gameId) return;
         setLoading(true);
         setError(null);
+        setShowHint(false);
         const res = await fetch("/api/game/action", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -117,6 +122,7 @@ export default function GamePage() {
     const phase = gameState?.phase ?? null;
     const isSettled = phase === "settled";
     const showBetting = !gameState || isSettled;
+    const recommendation = gameState ? getRecommendation(gameState) : null;
 
     return (
         <main className="min-h-screen bg-green-900 text-white flex flex-col p-6 gap-6">
@@ -129,11 +135,14 @@ export default function GamePage() {
                             Bankroll: <span className="text-yellow-300">${bankroll}</span>
                         </span>
                     )}
-                    <form action={signOut}>
-                        <button className="text-sm text-green-300 underline underline-offset-2">
-                            Sign out
-                        </button>
-                    </form>
+                    <div className="flex items-center gap-3">
+                        {username && <span className="text-green-300 text-sm">{username}</span>}
+                        <form action={signOut}>
+                            <button className="text-sm text-green-300 underline underline-offset-2">
+                                Sign out
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </header>
 
@@ -242,6 +251,26 @@ export default function GamePage() {
                     <button onClick={() => takeAction("surrender")} disabled={loading} className={btnRed}>
                         Surrender
                     </button>
+                </div>
+            )}
+
+            {/* Hint */}
+            {recommendation && (
+                <div className="flex flex-col gap-2">
+                    <button
+                        onClick={() => setShowHint((h) => !h)}
+                        className="self-start px-4 py-1.5 rounded border border-green-500 text-green-300 text-sm hover:bg-green-800 transition-colors"
+                    >
+                        {showHint ? "Hide hint" : "Show hint"}
+                    </button>
+                    {showHint && (
+                        <div className="flex items-center gap-3 bg-green-800/60 border border-green-600 rounded px-4 py-3 text-sm max-w-md">
+                            <span className="font-bold text-yellow-300 uppercase tracking-wide">
+                                {recommendation.action}
+                            </span>
+                            <span className="text-green-200">{recommendation.reason}</span>
+                        </div>
+                    )}
                 </div>
             )}
 
