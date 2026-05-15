@@ -190,7 +190,7 @@ export default function GamePage() {
                                 href="https://github.com/thomasw005/blackjack"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="hidden md:inline text-xs font-medium transition-all hover:opacity-100 opacity-40"
+                                className="text-xs font-medium transition-all hover:opacity-100 opacity-40"
                                 style={{ color: "var(--muted)" }}
                             >
                                 GitHub
