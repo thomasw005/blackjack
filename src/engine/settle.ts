@@ -1,4 +1,5 @@
 import { getHandValue, isBlackjack, isBust } from "./hand";
+import { RULES } from "./constants";
 import { GameState, PlayerHand, DealerHand } from "./types";
 
 function settleHand(playerHand: PlayerHand, dealerHand: DealerHand) {
@@ -23,26 +24,15 @@ export function settleRound(state: GameState) {
     }
 }
 
+// startRound deducts the bet upfront, so payout returns gross (original bet + winnings).
+// win/blackjack: return bet + profit. push: return bet. lose: 0 (bet already gone). surrender: return half.
 function payout(playerHand: PlayerHand): number {
-    let payout = 0;
-
     switch (playerHand.result) {
-        case "win":
-            payout = playerHand.bet;
-            break;
-        case "lose":
-            payout = -playerHand.bet;
-            break;
-        case "push":
-            payout = 0;
-            break;
-        case "blackjack":
-            payout = playerHand.bet * 1.5;
-            break;
-        case "surrender":
-            payout = -playerHand.bet / 2;
-            break;
+        case "win":       return playerHand.bet * 2;
+        case "lose":      return 0;
+        case "push":      return playerHand.bet;
+        case "blackjack": return playerHand.bet * (1 + RULES.blackjackPayout);
+        case "surrender": return playerHand.bet / 2;
+        default:          return 0;
     }
-
-    return payout;
 }

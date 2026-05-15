@@ -3,6 +3,9 @@ import { settleRound } from "../settle";
 import { GameState, PlayerHand, DealerHand } from "../types";
 import { RULES } from "../constants";
 
+// bankroll in makeState represents the post-bet state (startRound already deducted the bet).
+// payout returns gross amounts: win = 2×bet, push = bet returned, lose = 0, etc.
+
 function makePlayerHand(overrides: Partial<PlayerHand> = {}): PlayerHand {
     return {
         cards: [{ rank: "9", suit: "hearts" }, { rank: "8", suit: "spades" }],
@@ -29,7 +32,7 @@ function makeState(playerHand: PlayerHand, dealerCards: DealerHand["cards"], ban
 }
 
 describe("settleRound", () => {
-    it("player wins: bankroll increases by bet", () => {
+    it("player wins: returns 2×bet (bet back + equal profit)", () => {
         const hand = makePlayerHand({
             cards: [{ rank: "9", suit: "hearts" }, { rank: "9", suit: "spades" }], // 18
         });
@@ -39,10 +42,10 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("win");
-        expect(state.bankroll).toBe(1100);
+        expect(state.bankroll).toBe(1200); // 1000 + 2×100
     });
 
-    it("player loses: bankroll decreases by bet", () => {
+    it("player loses: returns nothing (bet was lost at startRound)", () => {
         const hand = makePlayerHand({
             cards: [{ rank: "9", suit: "hearts" }, { rank: "7", suit: "spades" }], // 16
         });
@@ -52,10 +55,10 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("lose");
-        expect(state.bankroll).toBe(900);
+        expect(state.bankroll).toBe(1000); // 1000 + 0
     });
 
-    it("push: bankroll unchanged", () => {
+    it("push: returns the original bet", () => {
         const hand = makePlayerHand({
             cards: [{ rank: "9", suit: "hearts" }, { rank: "8", suit: "spades" }], // 17
         });
@@ -65,7 +68,7 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("push");
-        expect(state.bankroll).toBe(1000);
+        expect(state.bankroll).toBe(1100); // 1000 + 100 (bet returned)
     });
 
     it("player blackjack pays 3:2", () => {
@@ -79,10 +82,10 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("blackjack");
-        expect(state.bankroll).toBe(1000 + 100 * RULES.blackjackPayout);
+        expect(state.bankroll).toBe(1000 + 100 * (1 + RULES.blackjackPayout)); // 1250
     });
 
-    it("mutual blackjack is a push", () => {
+    it("mutual blackjack is a push: returns the original bet", () => {
         const hand = makePlayerHand({
             cards: [{ rank: "A", suit: "hearts" }, { rank: "K", suit: "spades" }],
         });
@@ -92,7 +95,7 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("push");
-        expect(state.bankroll).toBe(1000);
+        expect(state.bankroll).toBe(1100); // 1000 + 100 (bet returned)
     });
 
     it("dealer blackjack beats player non-blackjack 21", () => {
@@ -126,7 +129,7 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("lose");
-        expect(state.bankroll).toBe(900);
+        expect(state.bankroll).toBe(1000); // 1000 + 0
     });
 
     it("dealer bust: player wins", () => {
@@ -140,10 +143,10 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("win");
-        expect(state.bankroll).toBe(1100);
+        expect(state.bankroll).toBe(1200); // 1000 + 2×100
     });
 
-    it("surrender: loses half the bet", () => {
+    it("surrender: returns half the bet", () => {
         const hand = makePlayerHand({
             cards: [{ rank: "9", suit: "hearts" }, { rank: "7", suit: "spades" }],
             result: "surrender",
@@ -155,11 +158,12 @@ describe("settleRound", () => {
         ]);
         settleRound(state);
         expect(state.playerHands[0].result).toBe("surrender");
-        expect(state.bankroll).toBe(950);
+        expect(state.bankroll).toBe(1050); // 1000 + 50 (half returned)
     });
 
     it("settles multiple hands independently", () => {
         // hand1 (18) wins vs dealer 16; hand2 (15) loses vs dealer 16
+        // bankroll=1000 is post-bet for both hands (original was 1200, bets totalled 200)
         const hand1 = makePlayerHand({
             cards: [{ rank: "9", suit: "hearts" }, { rank: "9", suit: "spades" }], // 18
             bet: 100,
@@ -184,6 +188,6 @@ describe("settleRound", () => {
         settleRound(state);
         expect(state.playerHands[0].result).toBe("win");
         expect(state.playerHands[1].result).toBe("lose");
-        expect(state.bankroll).toBe(1000); // +100 - 100
+        expect(state.bankroll).toBe(1200); // 1000 + 2×100 (win) + 0 (lose)
     });
 });

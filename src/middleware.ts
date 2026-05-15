@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const PROTECTED = ["/game", "/profile", "/leaderboard"];
+const AUTH_ONLY = ["/login", "/signup", "/check-email"];
+
 export async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({ request });
 
@@ -25,7 +28,24 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { pathname } = request.nextUrl;
+
+    const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
+    const isAuthOnly = AUTH_ONLY.some((p) => pathname.startsWith(p));
+
+    if (!user && isProtected) {
+        return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    if (user && isAuthOnly) {
+        return NextResponse.redirect(new URL("/game", request.url));
+    }
+
+    if (pathname === "/") {
+        return NextResponse.redirect(new URL(user ? "/game" : "/login", request.url));
+    }
+
     return supabaseResponse;
 }
 

@@ -24,7 +24,7 @@
 .DS_Store
 Thumbs.db
 *.pem
-# plan.md
+plan.md
 
 # debug
 npm-debug.log*

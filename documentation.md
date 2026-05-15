@@ -9,13 +9,18 @@ This file tracks design decisions, current state, and context for each file. Rea
 ```
 src/
   app/
-    api/                        (empty — future API routes)
+    api/
+      game/
+        start/route.ts          (complete — POST: place bet, deal initial cards)
+        action/route.ts         (complete — POST: apply player action)
+        state/route.ts          (complete — GET: fetch active game state)
+      leaderboard/route.ts      (complete — GET: fetch leaderboard)
     game/                       (empty — future game page)
     leaderboard/                (empty — future leaderboard page)
-    login/                      (empty — future login page)
+    login/                      (login page — complete)
     profile/                    (empty — future profile page)
     rules/                      (empty — future rules page)
-    signup/                     (empty — future signup page)
+    signup/                     (signup page — complete)
     favicon.ico
     globals.css
     layout.tsx
@@ -34,11 +39,12 @@ src/
     hand.ts                     (complete)
     rules.ts                    (complete)
     dealer.ts                   (complete)
-    settle.ts                   (complete)
+    settle.ts                   (complete — payout bug fixed: now returns gross amounts)
     recommendation.ts           (deferred — skipped for now, to be added later)
   lib/
-    auth.ts                     (empty)
-    db.ts                       (empty)
+    auth.ts                     (complete)
+    db.ts                       (complete — getProfile, getWallet, getActiveGame, createGame, saveGameState, loadGameState, completeRound)
+    gameUtils.ts                (complete — sanitizeState: hides dealer hole card)
     utils.ts                    (empty)
   styles/                       (empty)
 ```
@@ -58,7 +64,12 @@ src/
 - Phase 2, Step 11 (tests) — complete: all engine files covered (93 tests across 6 test files)
 - Phase 3, Step 12 (Database schema) — complete: Supabase project created, @supabase/supabase-js installed, .env.local configured, schema created with RLS enabled.
 - Phase 4 (Auth) — complete: @supabase/ssr installed, client/server Supabase helpers created, middleware wired up, auth.ts and db.ts written. Login, signup, check-email, and game pages built and tested.
-- Phase 6 (Server/API Logic) — next: doing before Phase 5 (UI) so the API shape is known before building the UI.
+- Phase 5 (Server/API Logic) — complete: 4 API routes built, settle.ts payout bug fixed, db.ts extended with game helpers. UI is next.
+
+### DB migration required (run in Supabase SQL editor):
+```sql
+ALTER TABLE games ADD COLUMN IF NOT EXISTS state jsonb;
+```
 
 ---
 
@@ -285,9 +296,14 @@ PostgreSQL via Supabase. RLS enabled on all tables. All writes go through the se
 ### Tables
 - `profiles` — `id` (FK → auth.users), `username`, `created_at`
 - `wallets` — `user_id` (PK, FK → profiles), `balance`, `updated_at`
-- `games` — `id`, `user_id`, `started_at`, `ended_at`, `status` ('active'|'complete'), `outcome_summary`
+- `games` — `id`, `user_id`, `started_at`, `ended_at`, `status` ('active'|'complete'), `outcome_summary`, `state` (jsonb — live GameState+Shoe, null when complete)
 - `hands` — `id`, `game_id`, `hand_index`, `player_cards`, `dealer_cards`, `wager`, `insurance_wager`, `result`, `doubled`, `split_from_hand_id`
 - `transactions` — `id`, `user_id`, `game_id`, `type`, `amount`, `created_at`
+
+### Required migration (run in Supabase SQL editor)
+```sql
+ALTER TABLE games ADD COLUMN IF NOT EXISTS state jsonb;
+```
 
 ### RLS policies
 All tables have RLS enabled. Select policies let users read only their own rows. No client-side insert/update/delete policies — the server handles all writes via service role.
@@ -311,4 +327,29 @@ Supabase Auth with email/password. Email confirmation is **enabled** — users m
 - `src/lib/supabase/server.ts` — server Supabase client (`createClient`) and admin client (`createAdminClient` using service role key)
 - `src/middleware.ts` — refreshes auth session on every request via `supabase.auth.getUser()`
 - `src/lib/auth.ts` — server actions: `signUp`, `signIn`, `signOut`, `getUser`, `deleteUser`
-- `src/lib/db.ts` — server helpers: `getProfile`, `getWallet` (more to be added per phase)
+- `src/lib/db.ts` — server helpers: `getProfile`, `getWallet`, `getActiveGame`, `createGame`, `saveGameState`, `loadGameState`, `completeRound`
+- `src/lib/gameUtils.ts` — `sanitizeState`: strips the dealer hole card from responses when not yet revealed
+
+---
+
+## API Routes
+
+All routes require an authenticated session (cookie). Writes use the admin client (service role).
+
+### `POST /api/game/start`
+Body: `{ bet: number }`. Validates bet against wallet balance, rejects if an active game exists, initializes a `GameState` + `Shoe` via the engine, saves to `games.state`, returns `{ gameId, state }` (hole card hidden).
+
+### `POST /api/game/action`
+Body: `{ gameId: string, action: ActionType }`. Loads game state from DB, validates action legality via engine rules, calls `applyPlayerAction`. After insurance resolves, auto-advances player blackjack to dealer-turn. When phase reaches `"dealer-turn"`: plays dealer hand, resolves insurance payout (2:1 if dealer blackjack), calls `settleRound`, then writes hands + transactions + wallet update via `completeRound`. Returns `{ state }`.
+
+### `GET /api/game/state`
+Returns `{ gameId, state }` for the user's active game, or `{ gameId: null, state: null }` if none.
+
+### `GET /api/leaderboard`
+Returns top 20 players by bankroll with win/loss/push counts and net profit from the transactions table.
+
+### Design decisions
+- `games.state` (jsonb) stores `{ gameState, shoe }` during an active round. Set to null when round completes.
+- Insurance is resolved in the action route (not the engine) — `isBlackjack(dealerHand)` is checked after `playDealerHand` and bankroll is updated before `settleRound`.
+- `sanitizeState` hides the dealer's hole card (slices `dealerHand.cards` to the upcard only) until `holeCardRevealed` is true.
+- `settle.ts` payout bug was fixed: `startRound` deducts the bet upfront, so `payout` now returns gross amounts (win = 2×bet, push = bet returned, lose = 0, etc.).
