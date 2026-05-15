@@ -17,12 +17,15 @@ export async function GET() {
     const walletBalance = walletResult.data?.balance ?? null;
     const username = profileResult.data?.username ?? null;
 
-    if (!active) return NextResponse.json({ gameId: null, state: null, balance: walletBalance, username });
+    const email = user.email ?? null;
+
+    if (!active) return NextResponse.json({ gameId: null, state: null, balance: walletBalance, username, email });
 
     return NextResponse.json({
         gameId: active.id,
         state: sanitizeState(active.state.gameState),
         balance: active.state.gameState.bankroll,
         username,
+        email,
     });
 }

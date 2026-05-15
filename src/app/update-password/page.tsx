@@ -1,24 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { signUp } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+import { updatePassword } from "@/lib/auth";
 
-export default function SignupPage() {
-    const [email, setEmail] = useState("");
-    const [username, setUsername] = useState("");
+export default function UpdatePasswordPage() {
+    const router = useRouter();
     const [password, setPassword] = useState("");
+    const [confirm, setConfirm] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
+        if (password !== confirm) {
+            setError("Passwords do not match.");
+            return;
+        }
         setError("");
         setLoading(true);
-        const result = await signUp(email, password, username);
+        const result = await updatePassword(password);
         if (result?.error) {
             setError(result.error);
             setLoading(false);
+        } else {
+            router.push("/game");
         }
     }
 
@@ -38,17 +44,15 @@ export default function SignupPage() {
     return (
         <main className="min-h-screen flex flex-col items-center justify-center px-4">
             <div className="w-full max-w-sm">
-                {/* Logo */}
                 <div className="text-center mb-8">
                     <span className="text-3xl font-bold tracking-tight">
                         <span style={{ color: "var(--brand)" }}>♠</span> Blackjack
                     </span>
                     <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-                        Create your account
+                        Choose a new password
                     </p>
                 </div>
 
-                {/* Card */}
                 <div
                     className="rounded-xl p-8 flex flex-col gap-5"
                     style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
@@ -61,42 +65,8 @@ export default function SignupPage() {
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <div className="flex flex-col gap-1.5">
-                            <label htmlFor="username" className="text-sm font-medium" style={{ color: "var(--muted)" }}>
-                                Username
-                            </label>
-                            <input
-                                id="username"
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                required
-                                className="rounded-lg px-3 py-2 text-sm outline-none transition-all"
-                                style={inputStyle}
-                                onFocus={focusBrand}
-                                onBlur={blurBorder}
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                            <label htmlFor="email" className="text-sm font-medium" style={{ color: "var(--muted)" }}>
-                                Email
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="rounded-lg px-3 py-2 text-sm outline-none transition-all"
-                                style={inputStyle}
-                                onFocus={focusBrand}
-                                onBlur={blurBorder}
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
                             <label htmlFor="password" className="text-sm font-medium" style={{ color: "var(--muted)" }}>
-                                Password
+                                New password
                             </label>
                             <input
                                 id="password"
@@ -104,6 +74,25 @@ export default function SignupPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
+                                minLength={6}
+                                className="rounded-lg px-3 py-2 text-sm outline-none transition-all"
+                                style={inputStyle}
+                                onFocus={focusBrand}
+                                onBlur={blurBorder}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label htmlFor="confirm" className="text-sm font-medium" style={{ color: "var(--muted)" }}>
+                                Confirm password
+                            </label>
+                            <input
+                                id="confirm"
+                                type="password"
+                                value={confirm}
+                                onChange={(e) => setConfirm(e.target.value)}
+                                required
+                                minLength={6}
                                 className="rounded-lg px-3 py-2 text-sm outline-none transition-all"
                                 style={inputStyle}
                                 onFocus={focusBrand}
@@ -114,20 +103,13 @@ export default function SignupPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="mt-1 w-full rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
+                            className="mt-1 w-full rounded-lg py-2.5 text-sm font-semibold transition-all hover:brightness-75 disabled:opacity-50"
                             style={{ background: "var(--brand)", color: "#0f0f0f" }}
                         >
-                            {loading ? "Creating account…" : "Create account"}
+                            {loading ? "Updating…" : "Update password"}
                         </button>
                     </form>
                 </div>
-
-                <p className="text-center text-sm mt-5" style={{ color: "var(--muted)" }}>
-                    Already have an account?{" "}
-                    <Link href="/login" className="font-medium hover:opacity-80 transition-opacity" style={{ color: "var(--brand)" }}>
-                        Sign in
-                    </Link>
-                </p>
             </div>
         </main>
     );

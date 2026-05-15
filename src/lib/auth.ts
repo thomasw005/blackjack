@@ -9,10 +9,14 @@ export async function signUp(
     username: string
 ): Promise<{ error: string } | void> {
     const supabase = await createClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username, full_name: username } },
+        options: {
+            data: { username, full_name: username },
+            emailRedirectTo: `${siteUrl}/auth/confirm`,
+        },
     });
     if (error) return { error: error.message };
     redirect("/check-email");
@@ -40,12 +44,70 @@ export async function getUser() {
     return user;
 }
 
+export async function updateUsername(username: string): Promise<{ error: string } | void> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not logged in" };
+
+    const admin = createAdminClient();
+    const { data: existing } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .neq("id", user.id)
+        .maybeSingle();
+
+    if (existing) return { error: "Username already taken." };
+
+    const { error } = await admin.from("profiles").update({ username }).eq("id", user.id);
+    if (error) return { error: error.message };
+}
+
+export async function updateEmail(email: string): Promise<{ error: string } | void> {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({ email });
+    if (error) return { error: error.message };
+}
+
+export async function resetPassword(email: string): Promise<{ error: string } | void> {
+    const supabase = await createClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/auth/confirm?next=/update-password`,
+    });
+    if (error) return { error: error.message };
+}
+
+export async function updatePassword(password: string): Promise<{ error: string } | void> {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+}
+
 export async function deleteUser(): Promise<{ error: string } | void> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Not logged in" };
 
     const admin = createAdminClient();
+
+    const { data: games } = await admin.from("games").select("id").eq("user_id", user.id);
+    const gameIds = (games ?? []).map((g: { id: string }) => g.id);
+
+    if (gameIds.length > 0) {
+        await admin.from("hands").delete().in("game_id", gameIds);
+    }
+
+    await Promise.all([
+        admin.from("transactions").delete().eq("user_id", user.id),
+        admin.from("games").delete().eq("user_id", user.id),
+    ]);
+
+    await Promise.all([
+        admin.from("wallets").delete().eq("user_id", user.id),
+        admin.from("profiles").delete().eq("id", user.id),
+    ]);
+
     const { error } = await admin.auth.admin.deleteUser(user.id);
     if (error) return { error: error.message };
     redirect("/signup");
