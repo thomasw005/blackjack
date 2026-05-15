@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateUsername, updateEmail, updatePassword, deleteUser } from "@/lib/auth";
+import { updateUsername, updateEmail, updatePassword, deleteUser, signOut } from "@/lib/auth";
 
 interface Props {
     initialUsername: string;
@@ -221,6 +221,19 @@ export default function AccountModal({ initialUsername, initialEmail, onClose, o
                         </button>
                     </div>
                     <StatusLine msg={passwordMsg} />
+                </section>
+
+                {/* Sign out */}
+                <section className="px-6 py-5 flex flex-col gap-3" style={sectionBorder}>
+                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>Session</p>
+                    <form action={signOut}>
+                        <button
+                            className="self-start px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:bg-white/10"
+                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                        >
+                            Sign out
+                        </button>
+                    </form>
                 </section>
 
                 {/* Danger zone */}

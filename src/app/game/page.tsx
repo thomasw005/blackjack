@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signOut } from "@/lib/auth";
 import AccountModal from "@/components/AccountModal";
 import AdOverlay from "@/components/AdOverlay";
 import { GameState, Card } from "@/engine/types";
@@ -191,7 +190,7 @@ export default function GamePage() {
                                 href="https://github.com/thomasw005/blackjack"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs font-medium transition-all hover:opacity-100 opacity-40"
+                                className="hidden md:inline text-xs font-medium transition-all hover:opacity-100 opacity-40"
                                 style={{ color: "var(--muted)" }}
                             >
                                 GitHub
@@ -199,38 +198,31 @@ export default function GamePage() {
                         </div>
                     )}
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
                     <Link
                         href="/rules"
-                        className="hidden md:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                        className="text-xs md:text-sm font-medium px-2 py-1.5 md:px-2.5 rounded-lg transition-all hover:bg-white/10"
                         style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                     >
                         Rules
                     </Link>
                     <Link
                         href="/leaderboard"
-                        className="hidden md:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                        className="text-xs md:text-sm font-medium px-2 py-1.5 md:px-2.5 rounded-lg transition-all hover:bg-white/10"
                         style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                     >
-                        Leaderboard
+                        <span className="md:hidden">Ranks</span>
+                        <span className="hidden md:inline">Leaderboard</span>
                     </Link>
                     {username && (
                         <button
                             onClick={() => setActiveModal("account")}
-                            className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10 max-w-[80px] truncate sm:max-w-[120px]"
+                            className="text-xs md:text-sm font-medium px-2 py-1.5 md:px-2.5 rounded-lg transition-all hover:bg-white/10 max-w-[64px] truncate md:max-w-[120px]"
                             style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                         >
                             {username}
                         </button>
                     )}
-                    <form action={signOut}>
-                        <button
-                            className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
-                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
-                        >
-                            Sign out
-                        </button>
-                    </form>
                 </div>
             </header>
 

@@ -219,7 +219,7 @@ AUTH_ONLY  = ["/login", "/signup", "/check-email", "/forgot-password"]
 Client component. Loads state from `/api/game/state` on mount (bankroll, username, email, active game if any).
 
 ### Features
-- **Header**: `♠` logo (full "WilsonBlackjack" text hidden on mobile) + live bankroll + `+` ad button + muted "github" link on the left; Rules link, Leaderboard link (both hidden on mobile), username button, Sign out on the right
+- **Header**: `♠` logo (full "WilsonBlackjack" text hidden below md) + live bankroll + `+` ad button + muted "GitHub" link (hidden below md) on the left; Rules, Leaderboard ("Ranks" on mobile), username button on the right — no Sign out in header
 - **Modals**: `activeModal` state (`'account' | null`) + `showAd` boolean — Rules and Leaderboard navigate to standalone pages instead of opening modals
 - **Ad overlay**: opens via `+` button next to bankroll, or auto-opens when bet > bankroll on Deal. Uses Google H5 Games rewarded ad API (`adBreak`). 6s timeout shows "No ad available" if nothing loads. On `adViewed`, calls `/api/reward` to credit $10
 - **Table panel**: dealer section (flex-1, justify-center) + divider + player section (flex-1, justify-center) — each half fills its space and centers content, consistent at all game states
@@ -266,7 +266,8 @@ Fixed overlay (dark backdrop + centered card). Opens when username button is cli
 1. **Username** — inline input + Save. Disabled until value differs from current. Checks uniqueness server-side via `updateUsername`.
 2. **Email** — inline input + Save. Shows two-inbox confirmation notice on success. Uses `updateEmail`.
 3. **Password** — current password + new password + confirm password + Save. Re-auth required (passes both to `updatePassword`). Validates match and minimum length client-side before calling server.
-4. **Danger zone** — "Delete account" → confirmation step with warning text → "Yes, delete everything". Uses `deleteUser` which wipes all data in order.
+4. **Session** — Sign out button. Uses `signOut` server action.
+5. **Danger zone** — "Delete account" → confirmation step with warning text → "Yes, delete everything". Uses `deleteUser` which wipes all data in order.
 
 All sections show inline success (brand green) or error (red) messages. No full-page redirects except after account deletion.
 
