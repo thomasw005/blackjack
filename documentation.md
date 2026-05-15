@@ -38,13 +38,6 @@ src/
     RulesModal.tsx              (complete — static rules overlay, all game rules sectioned)
     LeaderboardModal.tsx        (complete — gains/losses/rich list with daily/weekly/monthly tabs)
     AdOverlay.tsx               (complete — rewarded ad overlay; uses Google H5 Games API, falls back to "unavailable" if no ad loads)
-    ActionButtons.tsx           (stub)
-    BankrollDisplay.tsx         (stub)
-    Card.tsx                    (stub)
-    Hand.tsx                    (stub)
-    LeaderboardTable.tsx        (stub)
-    RecommendationPanel.tsx     (stub)
-    Table.tsx                   (stub)
   engine/
     constants.ts                (complete)
     types.ts                    (complete)
@@ -55,9 +48,9 @@ src/
     settle.ts                   (complete — payout bug fixed: returns gross amounts)
     recommendation.ts           (complete — full basic strategy engine)
   lib/
-    auth.ts                     (complete — signUp, signIn, signOut, getUser, updateUsername,
+    auth.ts                     (complete — signUp, signIn, signOut, updateUsername,
                                   updateEmail, resetPassword, updatePassword, deleteUser)
-    db.ts                       (complete — getProfile, getWallet, getActiveGame, createGame,
+    db.ts                       (complete — getActiveGame, createGame,
                                   saveGameState, loadGameState, completeRound)
     gameUtils.ts                (complete — sanitizeState: hides dealer hole card)
     supabase/

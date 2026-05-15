@@ -3,26 +3,6 @@ import { isBlackjack } from "@/engine/hand";
 import { RULES } from "@/engine/constants";
 import { GameState, Shoe } from "@/engine/types";
 
-export async function getProfile(userId: string) {
-    const supabase = await createClient();
-    const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-    return data;
-}
-
-export async function getWallet(userId: string) {
-    const supabase = await createClient();
-    const { data } = await supabase
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", userId)
-        .single();
-    return data;
-}
-
 export async function getActiveGame(userId: string) {
     const supabase = await createClient();
     const { data } = await supabase

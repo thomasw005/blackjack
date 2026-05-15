@@ -46,12 +46,6 @@ export async function signOut(): Promise<void> {
     redirect("/login");
 }
 
-export async function getUser() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
-}
-
 export async function updateUsername(username: string): Promise<{ error: string } | void> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
