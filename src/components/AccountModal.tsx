@@ -34,6 +34,7 @@ export default function AccountModal({ initialUsername, initialEmail, onClose, o
     const [emailSaving, setEmailSaving] = useState(false);
     const [emailMsg, setEmailMsg] = useState<Msg>(null);
 
+    const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [passwordSaving, setPasswordSaving] = useState(false);
@@ -63,7 +64,7 @@ export default function AccountModal({ initialUsername, initialEmail, onClose, o
         if (result?.error) {
             setEmailMsg({ ok: false, text: result.error });
         } else {
-            setEmailMsg({ ok: true, text: "Check your new inbox to confirm the change." });
+            setEmailMsg({ ok: true, text: "Confirmation emails sent to both addresses — you must confirm the link in each inbox before the change takes effect." });
         }
         setEmailSaving(false);
     }
@@ -79,11 +80,12 @@ export default function AccountModal({ initialUsername, initialEmail, onClose, o
         }
         setPasswordSaving(true);
         setPasswordMsg(null);
-        const result = await updatePassword(newPassword);
+        const result = await updatePassword(newPassword, currentPassword);
         if (result?.error) {
             setPasswordMsg({ ok: false, text: result.error });
         } else {
             setPasswordMsg({ ok: true, text: "Password updated." });
+            setCurrentPassword("");
             setNewPassword("");
             setConfirmPassword("");
         }
@@ -180,6 +182,16 @@ export default function AccountModal({ initialUsername, initialEmail, onClose, o
                     <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>Password</p>
                     <input
                         type="password"
+                        placeholder="Current password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className={inputCls}
+                        style={inputStyle}
+                        onFocus={focusBrand}
+                        onBlur={blurBorder}
+                    />
+                    <input
+                        type="password"
                         placeholder="New password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
@@ -201,7 +213,7 @@ export default function AccountModal({ initialUsername, initialEmail, onClose, o
                         />
                         <button
                             onClick={handleUpdatePassword}
-                            disabled={passwordSaving || !newPassword || !confirmPassword}
+                            disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
                             className={saveBtnCls}
                             style={saveBtnStyle}
                         >

@@ -5,6 +5,7 @@ import { startRound } from "@/engine/round";
 import { playDealerHand } from "@/engine/dealer";
 import { settleRound } from "@/engine/settle";
 import { GameState, Shoe } from "@/engine/types";
+import { MIN_BET } from "@/engine/constants";
 import { getActiveGame, createGame, saveGameState, completeRound } from "@/lib/db";
 import { sanitizeState } from "@/lib/gameUtils";
 
@@ -16,8 +17,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const bet = body?.bet;
 
-    if (!Number.isInteger(bet) || bet < 1) {
-        return NextResponse.json({ error: "Bet must be a positive integer" }, { status: 400 });
+    if (!Number.isInteger(bet) || bet < MIN_BET) {
+        return NextResponse.json({ error: `Minimum bet is $${MIN_BET}` }, { status: 400 });
     }
 
     const { data: wallet } = await supabase

@@ -1,5 +1,7 @@
 import { Rules } from "./types";
 
+export const MIN_BET = 10;
+
 export const RULES: Rules = {
     numDecks: 6,
     dealerHitsS17: true,

@@ -6,6 +6,8 @@ import AccountModal from "@/components/AccountModal";
 import { GameState, Card } from "@/engine/types";
 import { getHandValue, isSoft } from "@/engine/hand";
 import { getRecommendation } from "@/engine/recommendation";
+import { canDouble, canSplit, canSurrender } from "@/engine/rules";
+import { MIN_BET } from "@/engine/constants";
 
 function handTotal(cards: Card[]): string {
     if (cards.length === 0) return "";
@@ -23,23 +25,21 @@ const SUIT_SYMBOL: Record<string, string> = {
     spades: "♠",
 };
 
-function CardView({ card }: { card: Card }) {
+function CardView({ card, compact }: { card: Card; compact?: boolean }) {
     const isRed = card.suit === "hearts" || card.suit === "diamonds";
+    const color = isRed ? "text-red-600" : "text-gray-900";
     return (
         <div
-            className="w-14 h-20 rounded-lg flex flex-col justify-between p-2 shadow-lg select-none"
+            className={`${compact ? "w-12 h-16" : "w-14 h-20 sm:w-20 sm:h-28"} rounded-lg ${compact ? "p-1" : "p-1.5 sm:p-2"} shadow-lg select-none relative`}
             style={{ background: "#fafafa", border: "1px solid #e0e0e0" }}
         >
-            <span className={`text-sm font-bold leading-none ${isRed ? "text-red-600" : "text-gray-900"}`}>
-                {card.rank}
-                <br />
-                {SUIT_SYMBOL[card.suit]}
-            </span>
-            <span className={`text-sm font-bold leading-none self-end rotate-180 ${isRed ? "text-red-600" : "text-gray-900"}`}>
-                {card.rank}
-                <br />
-                {SUIT_SYMBOL[card.suit]}
-            </span>
+            <div className={`flex justify-between items-start ${color}`}>
+                <span className={`${compact ? "text-xs" : "text-sm sm:text-lg"} font-bold leading-none`}>{card.rank}</span>
+                <span className={`${compact ? "text-xs" : "text-sm sm:text-lg"} leading-none`}>{SUIT_SYMBOL[card.suit]}</span>
+            </div>
+            <div className={`absolute inset-0 flex items-center justify-center ${color}`}>
+                <span className={`${compact ? "text-2xl" : "text-4xl sm:text-6xl"} leading-none`}>{SUIT_SYMBOL[card.suit]}</span>
+            </div>
         </div>
     );
 }
@@ -47,16 +47,16 @@ function CardView({ card }: { card: Card }) {
 function HiddenCard() {
     return (
         <div
-            className="w-14 h-20 rounded-lg flex items-center justify-center shadow-lg select-none"
+            className="w-14 h-20 sm:w-20 sm:h-28 rounded-lg flex items-center justify-center shadow-lg select-none"
             style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
         >
-            <span className="text-2xl" style={{ color: "var(--muted)" }}>?</span>
+            <span className="text-3xl sm:text-4xl" style={{ color: "var(--muted)" }}>?</span>
         </div>
     );
 }
 
 const btnBase =
-    "px-5 py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+    "px-4 py-2.5 sm:px-6 rounded-lg font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation";
 const btnBrand = `${btnBase} hover:brightness-75`;
 const btnOutline = `${btnBase} hover:bg-white/10`;
 
@@ -67,10 +67,20 @@ export default function GamePage() {
     const [username, setUsername] = useState<string | null>(null);
     const [email, setEmail] = useState<string | null>(null);
     const [showAccount, setShowAccount] = useState(false);
-    const [bet, setBet] = useState(10);
+    const [bet, setBet] = useState(MIN_BET);
+    const [betInput, setBetInput] = useState(String(MIN_BET));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showHint, setShowHint] = useState(false);
+
+    useEffect(() => {
+        const hash = new URLSearchParams(window.location.hash.slice(1));
+        const msg = hash.get("message");
+        if (msg) {
+            window.history.replaceState(null, "", window.location.pathname);
+            window.location.replace(`/email-changed?message=${encodeURIComponent(msg)}`);
+        }
+    }, []);
 
     useEffect(() => {
         fetch("/api/game/state")
@@ -134,34 +144,33 @@ export default function GamePage() {
 
     const phase = gameState?.phase ?? null;
     const isSettled = phase === "settled";
-    const showBetting = !gameState || isSettled;
     const recommendation = gameState ? getRecommendation(gameState) : null;
 
     return (
         <main
-            className="min-h-screen flex flex-col p-6 gap-6"
-            style={{ background: "var(--bg)" }}
+            className="h-screen overflow-hidden flex flex-col p-3 gap-2 sm:p-4 sm:gap-3 max-w-3xl mx-auto w-full"
+            style={{ background: "var(--bg)", height: "100dvh" }}
         >
             {/* Header */}
             <header
-                className="flex justify-between items-center px-4 py-3 rounded-xl"
+                className="flex justify-between items-center px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl shrink-0"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
             >
                 <span className="text-lg font-bold tracking-tight">
                     <span style={{ color: "var(--brand)" }}>♠</span> Blackjack
                 </span>
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-3 sm:gap-5">
                     {bankroll !== null && (
                         <span className="text-sm font-semibold">
-                            Bankroll:{" "}
+                            <span className="hidden sm:inline" style={{ color: "var(--muted)" }}>Bankroll: </span>
                             <span style={{ color: "var(--brand)" }}>${bankroll}</span>
                         </span>
                     )}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         {username && (
                             <button
                                 onClick={() => setShowAccount(true)}
-                                className="text-sm font-medium px-3 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                                className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10 max-w-[100px] truncate sm:max-w-none"
                                 style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                             >
                                 {username}
@@ -169,7 +178,7 @@ export default function GamePage() {
                         )}
                         <form action={signOut}>
                             <button
-                                className="text-sm font-medium px-3 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                                className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
                                 style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                             >
                                 Sign out
@@ -186,31 +195,38 @@ export default function GamePage() {
                 </p>
             )}
 
-            {/* Table */}
-            {gameState && (
-                <div
-                    className="flex-1 rounded-xl p-6 flex flex-col gap-8"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                >
+            {/* Table — always visible, controls live inside so size never changes */}
+            <div
+                className="flex-1 min-h-0 rounded-xl p-4 sm:p-6 flex flex-col gap-4 sm:gap-6"
+                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            >
+                {/* Cards area */}
+                <div className="flex-1 min-h-0 flex flex-col gap-4 sm:gap-6">
                     {/* Dealer */}
-                    <section className="flex flex-col gap-3">
+                    <section className="flex flex-col gap-4 items-center">
                         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
                             Dealer
                         </p>
-                        <div className="flex gap-2 flex-wrap">
-                            {gameState.dealerHand.cards.map((card, i) => (
-                                <CardView key={i} card={card} />
-                            ))}
-                            {!gameState.dealerHand.holeCardRevealed && <HiddenCard />}
-                        </div>
-                        {gameState.dealerHand.cards.length > 0 && (
-                            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
-                                Count:{" "}
-                                <span style={{ color: "var(--text)" }}>
-                                    {handTotal(gameState.dealerHand.cards)}
-                                    {!gameState.dealerHand.holeCardRevealed && " + ?"}
-                                </span>
-                            </p>
+                        {gameState ? (
+                            <>
+                                <div className="flex gap-3 flex-wrap justify-center">
+                                    {gameState.dealerHand.cards.map((card, i) => (
+                                        <CardView key={i} card={card} />
+                                    ))}
+                                    {!gameState.dealerHand.holeCardRevealed && <HiddenCard />}
+                                </div>
+                                {gameState.dealerHand.cards.length > 0 && (
+                                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+                                        Count:{" "}
+                                        <span style={{ color: "var(--text)" }}>
+                                            {handTotal(gameState.dealerHand.cards)}
+                                            {!gameState.dealerHand.holeCardRevealed && " + ?"}
+                                        </span>
+                                    </p>
+                                )}
+                            </>
+                        ) : (
+                            <div className="h-8" />
                         )}
                     </section>
 
@@ -218,205 +234,149 @@ export default function GamePage() {
                     <div style={{ borderTop: "1px solid var(--border)" }} />
 
                     {/* Player hands */}
-                    <section className="flex flex-col gap-4">
+                    <section className="flex flex-col gap-3 items-center w-full">
                         <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
                             Your hand
                         </p>
-                        {gameState.playerHands.map((hand, i) => {
-                            const isActive = i === gameState.activeHandIndex && phase === "player-turn";
+                        {gameState ? (() => {
+                            const isSplit = gameState.playerHands.length > 1;
                             const resultColors: Record<string, string> = {
-                                win: "var(--brand)",
-                                blackjack: "var(--brand)",
-                                push: "#60a5fa",
-                                lose: "#f87171",
-                                surrender: "#f87171",
+                                win: "var(--brand)", blackjack: "var(--brand)",
+                                push: "#60a5fa", lose: "#f87171", surrender: "#f87171",
                             };
                             const resultLabel: Record<string, string> = {
-                                win: "Win",
-                                lose: "Lose",
-                                push: "Push",
-                                blackjack: "Blackjack!",
-                                surrender: "Surrender",
+                                win: "Win", lose: "Lose", push: "Push",
+                                blackjack: "Blackjack!", surrender: "Surrender",
                             };
                             return (
-                                <div
-                                    key={i}
-                                    className="flex flex-col gap-3 p-4 rounded-lg"
-                                    style={{
-                                        border: isActive
-                                            ? "1px solid var(--brand)"
-                                            : "1px solid var(--border)",
-                                        background: isActive ? "rgba(62,207,142,0.05)" : "transparent",
-                                    }}
-                                >
-                                    <p className="text-sm" style={{ color: "var(--muted)" }}>
-                                        {gameState.playerHands.length > 1 ? `Hand ${i + 1} — ` : ""}
-                                        Bet:{" "}
-                                        <span style={{ color: "var(--text)" }}>${hand.bet}</span>
-                                        {hand.result && (
-                                            <span
-                                                className="ml-3 font-bold"
-                                                style={{ color: resultColors[hand.result] ?? "var(--text)" }}
+                                <div className={`flex w-full gap-3 ${isSplit ? "flex-row items-stretch" : "flex-col"}`}>
+                                    {gameState.playerHands.map((hand, i) => {
+                                        const isActive = i === gameState.activeHandIndex && phase === "player-turn";
+                                        return (
+                                            <div
+                                                key={i}
+                                                className="flex flex-col gap-2 p-3 rounded-lg items-center"
+                                                style={{
+                                                    flex: isSplit ? "1 1 0" : undefined,
+                                                    border: isActive ? "2px solid var(--brand)" : "1px solid var(--border)",
+                                                    background: isActive ? "rgba(62,207,142,0.06)" : "transparent",
+                                                }}
                                             >
-                                                {resultLabel[hand.result] ?? hand.result}
-                                            </span>
-                                        )}
-                                    </p>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {hand.cards.map((card, j) => (
-                                            <CardView key={j} card={card} />
-                                        ))}
-                                    </div>
-                                    {hand.cards.length > 0 && (
-                                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
-                                            Count:{" "}
-                                            <span style={{ color: "var(--text)" }}>{handTotal(hand.cards)}</span>
-                                        </p>
-                                    )}
+                                                {isSplit && (
+                                                    <span
+                                                        className="text-xs font-bold px-2 py-0.5 rounded-full"
+                                                        style={{
+                                                            background: isActive ? "var(--brand)" : "var(--border)",
+                                                            color: isActive ? "#0f0f0f" : "var(--muted)",
+                                                        }}
+                                                    >
+                                                        {isActive ? "Your turn" : `Hand ${i + 1}`}
+                                                    </span>
+                                                )}
+                                                <p className="text-xs" style={{ color: "var(--muted)" }}>
+                                                    {!isSplit && "Bet: "}
+                                                    <span style={{ color: "var(--text)" }}>${hand.bet}</span>
+                                                    {hand.result && (
+                                                        <span className="ml-2 font-bold" style={{ color: resultColors[hand.result] ?? "var(--text)" }}>
+                                                            {resultLabel[hand.result] ?? hand.result}
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <div className="flex gap-2 flex-wrap justify-center">
+                                                    {hand.cards.map((card, j) => (
+                                                        <CardView key={j} card={card} compact={isSplit} />
+                                                    ))}
+                                                </div>
+                                                {hand.cards.length > 0 && (
+                                                    <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+                                                        Count: <span style={{ color: "var(--text)" }}>{handTotal(hand.cards)}</span>
+                                                    </p>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             );
-                        })}
+                        })() : (
+                            <div className="w-full h-8 rounded-lg" style={{ border: "1px dashed var(--border)" }} />
+                        )}
                     </section>
                 </div>
-            )}
 
-            {/* Action buttons */}
-            {phase === "insurance" && (
-                <div className="flex gap-3 flex-wrap">
-                    <button
-                        onClick={() => takeAction("insurance")}
-                        disabled={loading}
-                        className={btnBrand}
-                        style={{ background: "var(--brand)", color: "#0f0f0f" }}
-                    >
-                        Take Insurance
-                    </button>
-                    <button
-                        onClick={() => takeAction("decline-insurance")}
-                        disabled={loading}
-                        className={btnOutline}
-                        style={{ border: "1px solid var(--border)", color: "var(--text)" }}
-                    >
-                        Decline
-                    </button>
-                </div>
-            )}
+                {/* Controls — always two rows so height never changes */}
+                <div className="flex flex-col gap-4 sm:gap-6 shrink-0">
+                    {/* Row 1: action buttons — all states use same-height buttons */}
+                    <div className="flex gap-2 sm:gap-3 flex-wrap justify-center items-center">
+                        {phase === "insurance" && (
+                            <>
+                                <button onClick={() => takeAction("insurance")} disabled={loading} className={btnBrand} style={{ background: "var(--brand)", color: "#0f0f0f" }}>Take Insurance</button>
+                                <button onClick={() => takeAction("decline-insurance")} disabled={loading} className={btnOutline} style={{ border: "1px solid var(--border)", color: "var(--text)" }}>Decline</button>
+                                {recommendation && (
+                                    <>
+                                        <div className="w-px self-stretch" style={{ background: "var(--border)" }} />
+                                        <button onClick={() => setShowHint((h) => !h)} className="w-28 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/10 text-center" style={{ border: "1px solid var(--border)", color: "var(--muted)" }}>
+                                            {showHint ? "Hide Hint" : "Show Hint"}
+                                        </button>
+                                    </>
+                                )}
+                            </>
+                        )}
+                        {phase === "player-turn" && (
+                            <>
+                                <button onClick={() => takeAction("hit")} disabled={loading} className={btnBrand} style={{ background: "var(--brand)", color: "#0f0f0f" }}>Hit</button>
+                                <button onClick={() => takeAction("stand")} disabled={loading} className={btnOutline} style={{ border: "1px solid var(--border)", color: "var(--text)" }}>Stand</button>
+                                <button onClick={() => takeAction("double")} disabled={loading || !canDouble(gameState!)} className={btnOutline} style={{ border: "1px solid var(--border)", color: "var(--text)" }}>Double</button>
+                                <button onClick={() => takeAction("split")} disabled={loading || !canSplit(gameState!)} className={btnOutline} style={{ border: "1px solid var(--border)", color: "var(--text)" }}>Split</button>
+                                <button onClick={() => takeAction("surrender")} disabled={loading || !canSurrender(gameState!)} className={btnOutline} style={{ border: "1px solid #f87171", color: "#f87171" }}>Surrender</button>
+                                {recommendation && (
+                                    <>
+                                        <div className="w-px self-stretch" style={{ background: "var(--border)" }} />
+                                        <button onClick={() => setShowHint((h) => !h)} className="w-28 px-3 py-2.5 rounded-lg text-sm font-medium transition-all hover:bg-white/10 text-center" style={{ border: "1px solid var(--border)", color: "var(--muted)" }}>
+                                            {showHint ? "Hide Hint" : "Show Hint"}
+                                        </button>
+                                    </>
+                                )}
+                            </>
+                        )}
+                        {isSettled && (
+                            <button onClick={nextRound} className={btnBrand} style={{ background: "var(--brand)", color: "#0f0f0f" }}>Next Round</button>
+                        )}
+                        {!gameState && (
+                            <>
+                                <div className="flex items-center rounded-lg overflow-hidden text-sm" style={{ background: "#262626", border: "1px solid var(--border)" }}>
+                                    <span className="pl-3 pr-1 font-medium select-none" style={{ color: "var(--muted)" }}>$</span>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={betInput}
+                                        onChange={(e) => {
+                                            const raw = e.target.value.replace(/[^0-9]/g, "");
+                                            setBetInput(raw);
+                                            if (raw) setBet(Number(raw));
+                                        }}
+                                        onBlur={() => {
+                                            const n = Math.max(MIN_BET, Number(betInput) || MIN_BET);
+                                            setBetInput(String(n));
+                                            setBet(n);
+                                        }}
+                                        className="w-16 pr-3 py-2 outline-none bg-transparent"
+                                        style={{ color: "var(--text)" }}
+                                    />
+                                </div>
+                                <button onClick={startGame} disabled={loading} className={btnBrand} style={{ background: "var(--brand)", color: "#0f0f0f" }}>
+                                    {loading ? "Dealing…" : "Deal"}
+                                </button>
+                            </>
+                        )}
+                    </div>
 
-            {phase === "player-turn" && (
-                <div className="flex gap-3 flex-wrap">
-                    <button
-                        onClick={() => takeAction("hit")}
-                        disabled={loading}
-                        className={btnBrand}
-                        style={{ background: "var(--brand)", color: "#0f0f0f" }}
-                    >
-                        Hit
-                    </button>
-                    <button
-                        onClick={() => takeAction("stand")}
-                        disabled={loading}
-                        className={btnOutline}
-                        style={{ border: "1px solid var(--border)", color: "var(--text)" }}
-                    >
-                        Stand
-                    </button>
-                    <button
-                        onClick={() => takeAction("double")}
-                        disabled={loading}
-                        className={btnOutline}
-                        style={{ border: "1px solid var(--border)", color: "var(--text)" }}
-                    >
-                        Double
-                    </button>
-                    <button
-                        onClick={() => takeAction("split")}
-                        disabled={loading}
-                        className={btnOutline}
-                        style={{ border: "1px solid var(--border)", color: "var(--text)" }}
-                    >
-                        Split
-                    </button>
-                    <button
-                        onClick={() => takeAction("surrender")}
-                        disabled={loading}
-                        className={btnOutline}
-                        style={{ border: "1px solid #f87171", color: "#f87171" }}
-                    >
-                        Surrender
-                    </button>
-                </div>
-            )}
-
-            {/* Hint */}
-            {recommendation && (
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setShowHint((h) => !h)}
-                        className="shrink-0 px-4 py-1.5 rounded-lg text-sm font-medium transition-all hover:bg-white/10"
-                        style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
-                    >
-                        {showHint ? "Hide hint" : "Show hint"}
-                    </button>
-                    <div
-                        className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-opacity ${showHint ? "opacity-100" : "invisible opacity-0"}`}
-                        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                    >
-                        <span className="font-bold uppercase tracking-wide" style={{ color: "var(--brand)" }}>
-                            {recommendation.action}
-                        </span>
-                        <span style={{ color: "var(--muted)" }}>{recommendation.reason}</span>
+                    {/* Row 2: hint — always rendered to keep height constant */}
+                    <div className={`flex items-center gap-3 justify-center rounded-lg px-4 py-2 text-sm transition-opacity ${showHint && recommendation ? "opacity-100" : "opacity-0"}`} style={{ border: "1px solid var(--border)" }}>
+                        <span className="font-bold uppercase tracking-wide" style={{ color: "var(--brand)" }}>{recommendation?.action}</span>
+                        <span style={{ color: "var(--muted)" }}>{recommendation?.reason}</span>
                     </div>
                 </div>
-            )}
-
-            {/* Betting / next round */}
-            {showBetting && (
-                <div
-                    className="flex items-center gap-4 flex-wrap p-4 rounded-xl"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                >
-                    <label className="text-sm font-medium" style={{ color: "var(--muted)" }}>
-                        Bet
-                    </label>
-                    <input
-                        type="number"
-                        min={1}
-                        max={bankroll ?? undefined}
-                        value={bet}
-                        onChange={(e) => setBet(Math.max(1, Number(e.target.value)))}
-                        className="w-24 px-3 py-2 rounded-lg text-sm outline-none"
-                        style={{
-                            background: "#262626",
-                            border: "1px solid var(--border)",
-                            color: "var(--text)",
-                        }}
-                    />
-                    {isSettled ? (
-                        <button
-                            onClick={nextRound}
-                            className={btnBrand}
-                            style={{ background: "var(--brand)", color: "#0f0f0f" }}
-                        >
-                            Next Round
-                        </button>
-                    ) : (
-                        <button
-                            onClick={startGame}
-                            disabled={loading}
-                            className={btnBrand}
-                            style={{ background: "var(--brand)", color: "#0f0f0f" }}
-                        >
-                            {loading ? "Dealing…" : "Deal"}
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {loading && phase && !isSettled && (
-                <p className="text-sm animate-pulse" style={{ color: "var(--muted)" }}>
-                    Processing…
-                </p>
-            )}
+            </div>
 
             {showAccount && username && email && (
                 <AccountModal

@@ -8,6 +8,14 @@ export async function signUp(
     password: string,
     username: string
 ): Promise<{ error: string } | void> {
+    const admin = createAdminClient();
+    const { data: existing } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle();
+    if (existing) return { error: "Username already taken." };
+
     const supabase = await createClient();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     const { error } = await supabase.auth.signUp({
@@ -61,11 +69,17 @@ export async function updateUsername(username: string): Promise<{ error: string 
 
     const { error } = await admin.from("profiles").update({ username }).eq("id", user.id);
     if (error) return { error: error.message };
+
+    await supabase.auth.updateUser({ data: { username, full_name: username } });
 }
 
 export async function updateEmail(email: string): Promise<{ error: string } | void> {
     const supabase = await createClient();
-    const { error } = await supabase.auth.updateUser({ email });
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const { error } = await supabase.auth.updateUser(
+        { email },
+        { emailRedirectTo: `${siteUrl}/email-changed` }
+    );
     if (error) return { error: error.message };
 }
 
@@ -78,9 +92,20 @@ export async function resetPassword(email: string): Promise<{ error: string } | 
     if (error) return { error: error.message };
 }
 
-export async function updatePassword(password: string): Promise<{ error: string } | void> {
+export async function updatePassword(newPassword: string, currentPassword?: string): Promise<{ error: string } | void> {
     const supabase = await createClient();
-    const { error } = await supabase.auth.updateUser({ password });
+
+    if (currentPassword) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.email) return { error: "Not logged in" };
+        const { error: authError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword,
+        });
+        if (authError) return { error: "Current password is incorrect." };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) return { error: error.message };
 }
 

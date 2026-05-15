@@ -59,7 +59,7 @@ export default function SignupPage() {
                         </p>
                     )}
 
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4" suppressHydrationWarning>
                         <div className="flex flex-col gap-1.5">
                             <label htmlFor="username" className="text-sm font-medium" style={{ color: "var(--muted)" }}>
                                 Username
