@@ -170,7 +170,7 @@ export default function GamePage() {
                 <div className="flex items-center gap-3 min-w-0">
                     <span className="text-lg font-bold tracking-tight shrink-0">
                         <span style={{ color: "var(--brand)" }}>♠</span>
-                        <span className="hidden sm:inline"> WilsonBlackjack</span>
+                        <span className="hidden md:inline"> WilsonBlackjack</span>
                     </span>
                     {bankroll !== null && (
                         <div className="flex items-center gap-3">
@@ -202,14 +202,14 @@ export default function GamePage() {
                 <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <Link
                         href="/rules"
-                        className="hidden sm:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                        className="hidden md:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
                         style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                     >
                         Rules
                     </Link>
                     <Link
                         href="/leaderboard"
-                        className="hidden sm:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                        className="hidden md:inline-flex text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
                         style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                     >
                         Leaderboard
