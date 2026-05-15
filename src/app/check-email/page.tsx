@@ -4,7 +4,7 @@ export default function CheckEmailPage() {
             <div className="w-full max-w-sm">
                 <div className="text-center mb-8">
                     <span className="text-3xl font-bold tracking-tight">
-                        <span style={{ color: "var(--brand)" }}>♠</span> Blackjack
+                        <span style={{ color: "var(--brand)" }}>♠</span> WilsonBlackjack
                     </span>
                 </div>
 

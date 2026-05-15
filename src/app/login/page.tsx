@@ -34,7 +34,7 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <span className="text-3xl font-bold tracking-tight">
-                        <span style={{ color: "var(--brand)" }}>♠</span> Blackjack
+                        <span style={{ color: "var(--brand)" }}>♠</span> WilsonBlackjack
                     </span>
                     <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
                         Sign in to your account
