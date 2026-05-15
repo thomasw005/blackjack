@@ -5,6 +5,7 @@ import { signOut } from "@/lib/auth";
 import AccountModal from "@/components/AccountModal";
 import RulesModal from "@/components/RulesModal";
 import LeaderboardModal from "@/components/LeaderboardModal";
+import AdOverlay from "@/components/AdOverlay";
 import { GameState, Card } from "@/engine/types";
 import { getHandValue, isSoft } from "@/engine/hand";
 import { getRecommendation } from "@/engine/recommendation";
@@ -74,6 +75,7 @@ export default function GamePage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showHint, setShowHint] = useState(false);
+    const [showAd, setShowAd] = useState(false);
 
     useEffect(() => {
         const hash = new URLSearchParams(window.location.hash.slice(1));
@@ -100,6 +102,10 @@ export default function GamePage() {
     }, []);
 
     async function startGame() {
+        if (bankroll !== null && bet > bankroll) {
+            setShowAd(true);
+            return;
+        }
         setLoading(true);
         setError(null);
         const res = await fetch("/api/game/start", {
@@ -109,7 +115,11 @@ export default function GamePage() {
         });
         const data = await res.json();
         if (!res.ok) {
-            setError(data.error ?? "Failed to start game");
+            if (data.error?.toLowerCase().includes("insufficient")) {
+                setShowAd(true);
+            } else {
+                setError(data.error ?? "Failed to start game");
+            }
         } else {
             setGameId(data.gameId);
             setGameState(data.state);
@@ -163,9 +173,19 @@ export default function GamePage() {
                         <span style={{ color: "var(--brand)" }}>♠</span> WilsonBlackjack
                     </span>
                     {bankroll !== null && (
-                        <span className="text-sm font-semibold">
-                            <span style={{ color: "var(--muted)" }}>$</span><span style={{ color: "var(--brand)" }}>{bankroll}</span>
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold">
+                                <span style={{ color: "var(--muted)" }}>$</span><span style={{ color: "var(--brand)" }}>{bankroll}</span>
+                            </span>
+                            <button
+                                onClick={() => setShowAd(true)}
+                                className="w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold transition-all hover:brightness-75"
+                                style={{ background: "var(--brand)", color: "#0f0f0f" }}
+                                title="Watch an ad for +$10"
+                            >
+                                +
+                            </button>
+                        </div>
                     )}
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
@@ -406,6 +426,15 @@ export default function GamePage() {
             )}
             {activeModal === "leaderboard" && (
                 <LeaderboardModal onClose={() => setActiveModal(null)} />
+            )}
+            {showAd && (
+                <AdOverlay
+                    onClose={() => setShowAd(false)}
+                    onRewarded={(newBalance) => {
+                        setBankroll(newBalance);
+                        setShowAd(false);
+                    }}
+                />
             )}
         </main>
     );

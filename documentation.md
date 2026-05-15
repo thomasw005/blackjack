@@ -15,6 +15,7 @@ src/
         action/route.ts         (complete — POST: apply player action)
         state/route.ts          (complete — GET: fetch active game state + username + email)
       leaderboard/route.ts      (complete — GET: time-period gains/losses/richest leaderboard)
+      reward/route.ts           (complete — POST: credit +$10 after watching rewarded ad; patches active game state if mid-round)
     auth/
       confirm/route.ts          (complete — handles PKCE code exchange and token_hash OTP verification)
     check-email/page.tsx        (complete — shown after signup)
@@ -30,12 +31,13 @@ src/
     update-password/page.tsx    (complete — used after password reset link, redirects client-side)
     globals.css                 (complete — CSS variables design system)
     icon.svg                    (complete — green ♠ favicon)
-    layout.tsx                  (complete — suppressHydrationWarning on body, title "WilsonBlackjack")
+    layout.tsx                  (complete — title "WilsonBlackjack", Google H5 Games Ads script injected when NEXT_PUBLIC_ADSENSE_CLIENT is set)
     page.tsx                    (redirected by middleware)
   components/
     AccountModal.tsx            (complete — overlay with username/email/password/delete account)
     RulesModal.tsx              (complete — static rules overlay, all game rules sectioned)
     LeaderboardModal.tsx        (complete — gains/losses/rich list with daily/weekly/monthly tabs)
+    AdOverlay.tsx               (complete — rewarded ad overlay; uses Google H5 Games API, falls back to "unavailable" if no ad loads)
     ActionButtons.tsx           (stub)
     BankrollDisplay.tsx         (stub)
     Card.tsx                    (stub)
@@ -73,8 +75,8 @@ src/
 - Phase 3 (Database) — complete
 - Phase 4 (Auth) — complete
 - Phase 5 (API) — complete
-- Phase 6 (UI) — complete (game page, all auth pages, account settings modal)
-- Phase 7 (Leaderboard/Stats) — API complete, UI page not yet built
+- Phase 6 (UI) — complete (game page, all auth pages, account/rules/leaderboard/ad modals)
+- Phase 7 (Leaderboard/Stats) — API complete, modal complete; standalone page not built
 - Phase 8 (Testing) — engine tests complete; manual UI testing ongoing
 - Phase 9 (Deployment) — not started
 
@@ -223,8 +225,9 @@ AUTH_ONLY  = ["/login", "/signup", "/check-email", "/forgot-password"]
 Client component. Loads state from `/api/game/state` on mount (bankroll, username, email, active game if any).
 
 ### Features
-- **Header**: "♠ WilsonBlackjack" logo + live bankroll on the left; Rules, Leaderboard, username, Sign out buttons on the right
-- **Modals**: `activeModal` state (`'account' | 'rules' | 'leaderboard' | null`) — only one open at a time
+- **Header**: "♠ WilsonBlackjack" logo + live bankroll + `+` button (opens ad overlay) on the left; Rules, Leaderboard, username, Sign out on the right
+- **Modals**: `activeModal` state (`'account' | 'rules' | 'leaderboard' | null`) + `showAd` boolean — only one open at a time
+- **Ad overlay**: opens via `+` button next to bankroll, or auto-opens when bet > bankroll on Deal. Uses Google H5 Games rewarded ad API (`adBreak`). 6s timeout shows "No ad available" if nothing loads. On `adViewed`, calls `/api/reward` to credit $10
 - **Table panel**: dealer section + player section inside a surface card; controls live inside so table size never changes between states
 - **Cards**: `CardView` — white cards with corner rank/suit pips and large center suit symbol. `HiddenCard` — dark card with `?`. `compact` prop for split hands
 - **Hand totals**: displayed below cards, showing "7 or 17" format for soft hands
@@ -265,6 +268,9 @@ Body: `{ gameId: string, action: ActionType }`. Loads game state, validates acti
 ### `GET /api/game/state`
 Returns `{ gameId, state, balance, username, email }` for the user's active game, or `{ gameId: null, state: null, balance, username, email }` if none. Balance during active game comes from `gameState.bankroll` (reflects live bet deduction), not wallet table.
 
+### `POST /api/reward`
+No body. Adds $10 to the user's wallet and inserts a `type: "reward"` transaction. If an active game exists, also patches `gameState.bankroll` in `games.state` so the UI and any reload reflect the correct value without waiting for round completion. Returns `{ balance }` — the value shown in the header (game state bankroll during a round, wallet balance otherwise).
+
 ### `GET /api/leaderboard`
 Returns `{ dailyGains, dailyLosses, weeklyGains, weeklyLosses, monthlyGains, monthlyLosses, richest }`. Each is an array of `{ username, amount }` (top 10). Time windows: 24h / 7d / 30d. Gains = net positive aggregates, Losses = net negative. Richest = top wallets by balance. Uses admin client to bypass RLS.
 
@@ -288,7 +294,8 @@ PostgreSQL via Supabase. RLS enabled on all tables. All writes go through the se
 - `transactions.game_id` uses `on delete set null` — history survives game deletion
 - `settle.ts` payout is gross: win = 2×bet, push = bet returned, lose = 0, blackjack = bet × 2.5, surrender = bet × 0.5. `startRound` deducts bet upfront.
 - Insurance resolved in action route, not engine — checked after `playDealerHand` via `isBlackjack(dealerHand)`
-- Starting bankroll: $1,000 (set by DB trigger `on_auth_user_created`)
+- Starting bankroll: $250 (set by DB trigger `on_auth_user_created`)
+- Reward transactions use `type: "reward"`, `game_id: null` — credited outside of a round
 
 ### RLS / grants
 All tables have RLS enabled. Select policies let users read their own rows. No client-side write policies. Run manually:
