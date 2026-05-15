@@ -1,4 +1,4 @@
-import { isBlackjack, isBust } from "./hand";
+import { getHandValue, isBlackjack, isBust } from "./hand";
 import { drawCard, reshuffleIfNeeded } from "./shoe";
 import { ActionType, GameState, PlayerHand, Shoe } from "./types";
 
@@ -45,7 +45,7 @@ export function applyPlayerAction(state: GameState, shoe: Shoe, action: ActionTy
     switch (action) {
         case "hit": {
             hand.cards.push(drawCard(shoe));
-            if (isBust(hand)) {
+            if (isBust(hand) || getHandValue(hand) === 21) {
                 hand.isComplete = true;
                 advanceToNextHand(state);
             }

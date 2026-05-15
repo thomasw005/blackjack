@@ -5,6 +5,7 @@ import { playDealerHand } from "@/engine/dealer";
 import { settleRound } from "@/engine/settle";
 import { isBlackjack } from "@/engine/hand";
 import { canDouble, canSplit, canSurrender, canTakeInsurance } from "@/engine/rules";
+import { getHandValue } from "@/engine/hand";
 import { RULES } from "@/engine/constants";
 import { ActionType, GameState } from "@/engine/types";
 import { loadGameState, saveGameState, completeRound } from "@/lib/db";
@@ -13,6 +14,9 @@ import { sanitizeState } from "@/lib/gameUtils";
 function validateAction(gameState: GameState, action: ActionType): string | null {
     switch (action) {
         case "hit":
+            if (gameState.phase !== "player-turn") return "Not player's turn";
+            if (getHandValue(gameState.playerHands[gameState.activeHandIndex]) >= 21) return "Cannot hit on 21";
+            return null;
         case "stand":
             if (gameState.phase !== "player-turn") return "Not player's turn";
             return null;
