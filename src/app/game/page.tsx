@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { signOut } from "@/lib/auth";
 import AccountModal from "@/components/AccountModal";
+import RulesModal from "@/components/RulesModal";
+import LeaderboardModal from "@/components/LeaderboardModal";
 import { GameState, Card } from "@/engine/types";
 import { getHandValue, isSoft } from "@/engine/hand";
 import { getRecommendation } from "@/engine/recommendation";
@@ -66,7 +68,7 @@ export default function GamePage() {
     const [bankroll, setBankroll] = useState<number | null>(null);
     const [username, setUsername] = useState<string | null>(null);
     const [email, setEmail] = useState<string | null>(null);
-    const [showAccount, setShowAccount] = useState(false);
+    const [activeModal, setActiveModal] = useState<"account" | "rules" | "leaderboard" | null>(null);
     const [bet, setBet] = useState(MIN_BET);
     const [betInput, setBetInput] = useState(String(MIN_BET));
     const [loading, setLoading] = useState(false);
@@ -156,20 +158,34 @@ export default function GamePage() {
                 className="flex justify-between items-center px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl shrink-0"
                 style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
             >
-                <span className="text-lg font-bold tracking-tight">
-                    <span style={{ color: "var(--brand)" }}>♠</span> Blackjack
-                </span>
-                <div className="flex items-center gap-3 sm:gap-5">
+                <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold tracking-tight">
+                        <span style={{ color: "var(--brand)" }}>♠</span> WilsonBlackjack
+                    </span>
                     {bankroll !== null && (
                         <span className="text-sm font-semibold">
-                            <span className="hidden sm:inline" style={{ color: "var(--muted)" }}>Bankroll: </span>
-                            <span style={{ color: "var(--brand)" }}>${bankroll}</span>
+                            <span style={{ color: "var(--muted)" }}>$</span><span style={{ color: "var(--brand)" }}>{bankroll}</span>
                         </span>
                     )}
-                    <div className="flex items-center gap-2 sm:gap-3">
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                            onClick={() => setActiveModal("rules")}
+                            className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                        >
+                            Rules
+                        </button>
+                        <button
+                            onClick={() => setActiveModal("leaderboard")}
+                            className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10"
+                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                        >
+                            Leaderboard
+                        </button>
                         {username && (
                             <button
-                                onClick={() => setShowAccount(true)}
+                                onClick={() => setActiveModal("account")}
                                 className="text-sm font-medium px-2.5 py-1.5 rounded-lg transition-all hover:bg-white/10 max-w-[100px] truncate sm:max-w-none"
                                 style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
                             >
@@ -185,7 +201,6 @@ export default function GamePage() {
                             </button>
                         </form>
                     </div>
-                </div>
             </header>
 
             {/* Error */}
@@ -378,13 +393,19 @@ export default function GamePage() {
                 </div>
             </div>
 
-            {showAccount && username && email && (
+            {activeModal === "account" && username && email && (
                 <AccountModal
                     initialUsername={username}
                     initialEmail={email}
-                    onClose={() => setShowAccount(false)}
+                    onClose={() => setActiveModal(null)}
                     onUsernameChange={(u) => setUsername(u)}
                 />
+            )}
+            {activeModal === "rules" && (
+                <RulesModal onClose={() => setActiveModal(null)} />
+            )}
+            {activeModal === "leaderboard" && (
+                <LeaderboardModal onClose={() => setActiveModal(null)} />
             )}
         </main>
     );

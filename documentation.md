@@ -14,25 +14,28 @@ src/
         start/route.ts          (complete — POST: place bet, deal initial cards)
         action/route.ts         (complete — POST: apply player action)
         state/route.ts          (complete — GET: fetch active game state + username + email)
-      leaderboard/route.ts      (complete — GET: fetch leaderboard)
+      leaderboard/route.ts      (complete — GET: time-period gains/losses/richest leaderboard)
     auth/
       confirm/route.ts          (complete — handles PKCE code exchange and token_hash OTP verification)
     check-email/page.tsx        (complete — shown after signup)
     email-confirmed/page.tsx    (complete — shown after signup email confirmation)
     email-changed/page.tsx      (complete — shown after email change confirmation, reads ?message= param)
     forgot-password/page.tsx    (complete — sends password reset email)
-    game/page.tsx               (complete — full game UI with account modal)
-    leaderboard/                (empty — future leaderboard page)
+    game/page.tsx               (complete — full game UI with account/rules/leaderboard modals)
+    leaderboard/                (empty — future standalone leaderboard page)
     login/page.tsx              (complete — reads ?error=invalid-link from URL)
     profile/                    (empty — future profile page)
-    rules/                      (empty — future rules page)
+    rules/                      (empty — future standalone rules page)
     signup/page.tsx             (complete — pre-checks username uniqueness before calling signUp)
     update-password/page.tsx    (complete — used after password reset link, redirects client-side)
     globals.css                 (complete — CSS variables design system)
-    layout.tsx                  (complete — suppressHydrationWarning on body)
+    icon.svg                    (complete — green ♠ favicon)
+    layout.tsx                  (complete — suppressHydrationWarning on body, title "WilsonBlackjack")
     page.tsx                    (redirected by middleware)
   components/
     AccountModal.tsx            (complete — overlay with username/email/password/delete account)
+    RulesModal.tsx              (complete — static rules overlay, all game rules sectioned)
+    LeaderboardModal.tsx        (complete — gains/losses/rich list with daily/weekly/monthly tabs)
     ActionButtons.tsx           (stub)
     BankrollDisplay.tsx         (stub)
     Card.tsx                    (stub)
@@ -220,13 +223,17 @@ AUTH_ONLY  = ["/login", "/signup", "/check-email", "/forgot-password"]
 Client component. Loads state from `/api/game/state` on mount (bankroll, username, email, active game if any).
 
 ### Features
-- **Header**: bankroll, username button (opens AccountModal), sign out button
-- **Table panel**: dealer section + player section inside a surface card
-- **Cards**: `CardView` — white cards with corner rank/suit pips. `HiddenCard` — dark card with `?`
-- **Hand totals**: displayed below cards as `COUNT: x`, showing "7 or 17" format for soft hands
-- **Action buttons**: Hit (brand green fill), Stand/Double/Split/Decline (outlined), Surrender (red outline)
-- **Hint**: shows basic strategy recommendation inline to the right of the "Show hint" button. Always rendered (uses `invisible` to prevent layout shift)
-- **Betting area**: bet input + Deal/Next Round button in a surface card at the bottom
+- **Header**: "♠ WilsonBlackjack" logo + live bankroll on the left; Rules, Leaderboard, username, Sign out buttons on the right
+- **Modals**: `activeModal` state (`'account' | 'rules' | 'leaderboard' | null`) — only one open at a time
+- **Table panel**: dealer section + player section inside a surface card; controls live inside so table size never changes between states
+- **Cards**: `CardView` — white cards with corner rank/suit pips and large center suit symbol. `HiddenCard` — dark card with `?`. `compact` prop for split hands
+- **Hand totals**: displayed below cards, showing "7 or 17" format for soft hands
+- **Split hands**: rendered side-by-side with `flex-row`; active hand highlighted with brand border + green tint
+- **Action buttons**: Hit (brand green fill), Stand/Double/Split/Decline (outlined), Surrender (red outline). Double/Split/Surrender disabled via `canDouble`/`canSplit`/`canSurrender` engine functions
+- **Insurance phase**: Take Insurance + Decline buttons + hint toggle
+- **Hint**: "Show Hint" / "Hide Hint" toggle; recommendation row always in DOM with opacity toggle to prevent layout shift
+- **Betting**: `$` prefix input (type=text, inputMode=numeric), minimum $10 enforced on blur + backend. Deal button → starts game
+- **Between rounds**: placeholder elements maintain table layout; Next Round → clears state
 - **Hash fragment handler**: detects `#message=` from Supabase email change callbacks and redirects to `/email-changed?message=...`
 
 ---
@@ -259,7 +266,7 @@ Body: `{ gameId: string, action: ActionType }`. Loads game state, validates acti
 Returns `{ gameId, state, balance, username, email }` for the user's active game, or `{ gameId: null, state: null, balance, username, email }` if none. Balance during active game comes from `gameState.bankroll` (reflects live bet deduction), not wallet table.
 
 ### `GET /api/leaderboard`
-Returns top 20 players by bankroll with win/loss/push counts and net profit from transactions table.
+Returns `{ dailyGains, dailyLosses, weeklyGains, weeklyLosses, monthlyGains, monthlyLosses, richest }`. Each is an array of `{ username, amount }` (top 10). Time windows: 24h / 7d / 30d. Gains = net positive aggregates, Losses = net negative. Richest = top wallets by balance. Uses admin client to bypass RLS.
 
 ---
 
