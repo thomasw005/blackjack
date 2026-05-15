@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "WilsonBlackjack",
   description: "Vegas-style blackjack",
+  other: {
+    "google-adsense-account": "ca-pub-6467256840152370",
+  },
 };
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "";
@@ -33,6 +37,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
       </body>
+      <Analytics />
       {ADSENSE_CLIENT && (
         <>
           {/* Google H5 Games Ads — loads AdSense and wires up adBreak/adConfig */}
