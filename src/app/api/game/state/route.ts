@@ -6,7 +6,18 @@ import { sanitizeState } from "@/lib/gameUtils";
 export async function GET() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Not an error — the client falls back to a browser-local guest game.
+    if (!user) {
+        return NextResponse.json({
+            authenticated: false,
+            gameId: null,
+            state: null,
+            balance: null,
+            username: null,
+            email: null,
+        });
+    }
 
     const [active, walletResult, profileResult] = await Promise.all([
         getActiveGame(user.id),
@@ -19,9 +30,19 @@ export async function GET() {
 
     const email = user.email ?? null;
 
-    if (!active) return NextResponse.json({ gameId: null, state: null, balance: walletBalance, username, email });
+    if (!active) {
+        return NextResponse.json({
+            authenticated: true,
+            gameId: null,
+            state: null,
+            balance: walletBalance,
+            username,
+            email,
+        });
+    }
 
     return NextResponse.json({
+        authenticated: true,
         gameId: active.id,
         state: sanitizeState(active.state.gameState),
         balance: active.state.gameState.bankroll,

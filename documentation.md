@@ -45,6 +45,7 @@ src/
     hand.ts                     (complete)
     rules.ts                    (complete)
     dealer.ts                   (complete)
+    round.ts                    (complete — also validateAction/resolveRound, shared by API + guest)
     settle.ts                   (complete — payout bug fixed: returns gross amounts)
     recommendation.ts           (complete — full basic strategy engine)
   lib/
@@ -53,6 +54,7 @@ src/
     db.ts                       (complete — getActiveGame, createGame,
                                   saveGameState, loadGameState, completeRound)
     gameUtils.ts                (complete — sanitizeState: hides dealer hole card)
+    guestGame.ts                (complete — signed-out play: client-side engine + localStorage bankroll)
     supabase/
       server.ts                 (complete — createClient, createAdminClient)
     utils.ts                    (empty)
@@ -202,15 +204,42 @@ Free tier: 3,000 emails/month, 100/day. Without a verified domain, Resend only a
 Runs on all non-static routes. Calls `supabase.auth.getUser()` to refresh the session.
 
 ```
-PROTECTED = ["/game", "/profile", "/leaderboard", "/update-password"]
+PROTECTED = ["/profile", "/update-password"]
 AUTH_ONLY  = ["/login", "/signup", "/check-email", "/forgot-password"]
 ```
 
 - Unauthenticated + PROTECTED → `/login`
 - Authenticated + AUTH_ONLY → `/game`
-- Any request to `/` → `/game` (authenticated) or `/login` (unauthenticated)
+- Any request to `/` → `/game` (guests included)
+
+`/game`, `/leaderboard` and `/rules` are public. Signing in is only required to
+appear on the leaderboard — see **Guest Play** below.
 
 `/auth/confirm`, `/email-confirmed`, `/email-changed` are intentionally unguarded.
+
+---
+
+## Guest Play (`src/lib/guestGame.ts`)
+
+Signed-out visitors can play and view the leaderboard. They just can't appear on it.
+
+- **Where state lives:** guests run the engine client-side and persist
+  `{ bankroll, gameState, shoe }` to `localStorage` under `wbj:guest:v1`.
+  Signed-in players are unchanged — server-owned state in Postgres.
+- **Why the "server owns state" rule still holds:** that rule exists to stop
+  leaderboard cheating. Guest results never reach the leaderboard, so a guest
+  editing their own localStorage only changes a number on their own screen.
+- **Starting bankroll:** $250, matching the `on_auth_user_created` DB trigger.
+- **Account creation starts fresh:** the signup trigger creates a new wallet at
+  $250 with no transactions. The game page calls `clearGuest()` as soon as it sees
+  an authenticated session, so a guest bankroll never carries into an account.
+- **Rewarded ads:** `AdOverlay` takes an `isGuest` prop and credits +$10 locally
+  via `rewardGuest()` instead of calling `POST /api/reward`.
+- **Shared logic:** `validateAction`, `resolveRound`, and `resolveDeferredBlackjack`
+  live in `src/engine/round.ts` and are used by both the API routes and the guest
+  path, so action legality and settlement are identical in both modes.
+- A settled round is not restored on reload (in either mode) — the player lands
+  back on the betting screen.
 
 ---
 
@@ -248,7 +277,7 @@ Server component. Publicly accessible (not behind auth). Static content — no A
 
 ## Leaderboard Page (`src/app/leaderboard/page.tsx`)
 
-Client component. Protected route (requires auth via middleware). Same logic and UI as the old `LeaderboardModal` but rendered as a full page.
+Client component. Publicly accessible — guests can view it, they just don't appear on it. Same logic and UI as the old `LeaderboardModal` but rendered as a full page. Shows a "Sign up to get on the board" banner to signed-out visitors.
 
 - Sticky header with logo + "Play" button linking back to `/game`
 - Fetches `/api/leaderboard` on mount
@@ -275,7 +304,8 @@ All sections show inline success (brand green) or error (red) messages. No full-
 
 ## API Routes
 
-All routes require an authenticated session. Writes use the admin client (service role).
+All routes except `/api/leaderboard` and `/api/game/state` require an authenticated
+session. Writes use the admin client (service role).
 
 ### `POST /api/game/start`
 Body: `{ bet: number }`. Validates bet against wallet balance, rejects if active game exists, initializes GameState + Shoe via engine, handles immediate player blackjack (plays dealer + settles inline), saves to `games.state`, returns `{ gameId, state }` (hole card hidden).
@@ -284,7 +314,9 @@ Body: `{ bet: number }`. Validates bet against wallet balance, rejects if active
 Body: `{ gameId: string, action: ActionType }`. Loads game state, validates action legality, calls `applyPlayerAction`. After insurance resolves, auto-advances player blackjack to dealer-turn. When phase reaches `"dealer-turn"`: plays dealer hand, resolves insurance payout, calls `settleRound`, marks game complete via `completeRound`. Returns `{ state }`.
 
 ### `GET /api/game/state`
-Returns `{ gameId, state, balance, username, email }` for the user's active game, or `{ gameId: null, state: null, balance, username, email }` if none. Balance during active game comes from `gameState.bankroll` (reflects live bet deduction), not wallet table.
+Returns `{ authenticated, gameId, state, balance, username, email }` for the user's active game, or the same shape with `gameId: null, state: null` if none. Balance during active game comes from `gameState.bankroll` (reflects live bet deduction), not wallet table.
+
+Signed out it returns `authenticated: false` with null fields (HTTP 200, **not** 401) — the client uses this to switch into guest mode. `/leaderboard` also calls it just to decide whether to show the "sign up to get on the board" banner.
 
 ### `POST /api/reward`
 No body. Adds $10 to the user's wallet and inserts a `type: "reward"` transaction. If an active game exists, also patches `gameState.bankroll` in `games.state` so the UI and any reload reflect the correct value without waiting for round completion. Returns `{ balance }` — the value shown in the header (game state bankroll during a round, wallet balance otherwise).
@@ -356,6 +388,11 @@ All core TypeScript types. Key decisions:
 
 ### `src/engine/round.ts`
 `startRound`, `applyPlayerAction`, `advanceToNextHand`. Deal order P1→D1→P2→D2. Insurance phase before player blackjack check.
+
+Also holds the flow helpers shared by the API routes and guest play:
+- `validateAction(state, action)` — returns an error string if the action is illegal, else null
+- `resolveRound(state, shoe)` — plays the dealer, pays insurance, settles, sets phase to `"settled"`
+- `resolveDeferredBlackjack(state)` — completes a player blackjack that the insurance phase deferred
 
 ### `src/engine/__tests__/`
 93 tests across 6 files. All engine logic covered. One bug found and fixed during testing: `advanceToNextHand` had if/else branches swapped.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { rewardGuest } from "@/lib/guestGame";
 
 declare global {
     interface Window {
@@ -13,9 +14,11 @@ type State = "loading" | "playing" | "earned" | "dismissed" | "unavailable" | "c
 interface Props {
     onClose: () => void;
     onRewarded: (newBalance: number) => void;
+    // Guests have no wallet row — credit their browser-local bankroll instead.
+    isGuest?: boolean;
 }
 
-export default function AdOverlay({ onClose, onRewarded }: Props) {
+export default function AdOverlay({ onClose, onRewarded, isGuest }: Props) {
     const [state, setState] = useState<State>("loading");
     const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -49,6 +52,12 @@ export default function AdOverlay({ onClose, onRewarded }: Props) {
     async function claim() {
         setState("claiming");
         setClaimError(null);
+
+        if (isGuest) {
+            onRewarded(rewardGuest().balance);
+            return;
+        }
+
         const res = await fetch("/api/reward", { method: "POST" });
         const data = await res.json();
         if (!res.ok) {

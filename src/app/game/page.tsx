@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AccountModal from "@/components/AccountModal";
 import AdOverlay from "@/components/AdOverlay";
-import { GameState, Card } from "@/engine/types";
+import { GameState, ActionType, Card } from "@/engine/types";
 import { getHandValue, isSoft } from "@/engine/hand";
 import { getRecommendation } from "@/engine/recommendation";
 import { canDouble, canSplit, canSurrender } from "@/engine/rules";
 import { MIN_BET } from "@/engine/constants";
+import { loadGuest, clearGuest, startGuestRound, applyGuestAction } from "@/lib/guestGame";
 
 function handTotal(cards: Card[]): string {
     if (cards.length === 0) return "";
@@ -67,6 +68,8 @@ export default function GamePage() {
     const [bankroll, setBankroll] = useState<number | null>(null);
     const [username, setUsername] = useState<string | null>(null);
     const [email, setEmail] = useState<string | null>(null);
+    // null while the session check is in flight, so we don't flash the wrong header.
+    const [isGuest, setIsGuest] = useState<boolean | null>(null);
     const [activeModal, setActiveModal] = useState<"account" | null>(null);
     const [bet, setBet] = useState(MIN_BET);
     const [betInput, setBetInput] = useState(String(MIN_BET));
@@ -85,9 +88,28 @@ export default function GamePage() {
     }, []);
 
     useEffect(() => {
+        function startGuestSession() {
+            setIsGuest(true);
+            const guest = loadGuest();
+            setBankroll(guest.balance);
+            if (guest.gameId && guest.state) {
+                setGameId(guest.gameId);
+                setGameState(guest.state);
+            }
+        }
+
         fetch("/api/game/state")
             .then((r) => r.json())
             .then((data) => {
+                if (!data.authenticated) {
+                    startGuestSession();
+                    return;
+                }
+
+                // Signed in: the server-owned bankroll is the only one that counts,
+                // so drop any bankroll left over from guest play.
+                clearGuest();
+                setIsGuest(false);
                 if (data.balance !== null && data.balance !== undefined) setBankroll(data.balance);
                 if (data.username) setUsername(data.username);
                 if (data.email) setEmail(data.email);
@@ -96,7 +118,7 @@ export default function GamePage() {
                     setGameState(data.state);
                 }
             })
-            .catch(() => {});
+            .catch(startGuestSession);
     }, []);
 
     async function startGame() {
@@ -106,6 +128,21 @@ export default function GamePage() {
         }
         setLoading(true);
         setError(null);
+
+        if (isGuest) {
+            const result = startGuestRound(bet);
+            if ("error" in result) {
+                if (result.error.toLowerCase().includes("insufficient")) setShowAd(true);
+                else setError(result.error);
+            } else {
+                setGameId("guest");
+                setGameState(result.state);
+                setBankroll(result.balance);
+            }
+            setLoading(false);
+            return;
+        }
+
         const res = await fetch("/api/game/start", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -131,6 +168,18 @@ export default function GamePage() {
         setLoading(true);
         setError(null);
         setShowHint(false);
+
+        if (isGuest) {
+            const result = applyGuestAction(action as ActionType);
+            if ("error" in result) setError(result.error);
+            else {
+                setGameState(result.state);
+                setBankroll(result.balance);
+            }
+            setLoading(false);
+            return;
+        }
+
         const res = await fetch("/api/game/action", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -214,14 +263,24 @@ export default function GamePage() {
                         <span className="md:hidden">Ranks</span>
                         <span className="hidden md:inline">Leaderboard</span>
                     </Link>
-                    {username && (
-                        <button
-                            onClick={() => setActiveModal("account")}
-                            className="text-xs md:text-sm font-medium px-2 py-1.5 md:px-2.5 rounded-lg transition-all hover:bg-white/10 max-w-[64px] truncate md:max-w-[120px]"
-                            style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                    {isGuest ? (
+                        <Link
+                            href="/login"
+                            className="text-xs md:text-sm font-semibold px-2 py-1.5 md:px-2.5 rounded-lg transition-all hover:brightness-75"
+                            style={{ background: "var(--brand)", color: "#0f0f0f" }}
                         >
-                            {username}
-                        </button>
+                            Sign in
+                        </Link>
+                    ) : (
+                        username && (
+                            <button
+                                onClick={() => setActiveModal("account")}
+                                className="text-xs md:text-sm font-medium px-2 py-1.5 md:px-2.5 rounded-lg transition-all hover:bg-white/10 max-w-[64px] truncate md:max-w-[120px]"
+                                style={{ border: "1px solid var(--border)", color: "var(--muted)" }}
+                            >
+                                {username}
+                            </button>
+                        )
                     )}
                 </div>
             </header>
@@ -426,6 +485,7 @@ export default function GamePage() {
             )}
             {showAd && (
                 <AdOverlay
+                    isGuest={isGuest === true}
                     onClose={() => setShowAd(false)}
                     onRewarded={(newBalance) => {
                         setBankroll(newBalance);

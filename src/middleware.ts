@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/game", "/profile", "/leaderboard", "/update-password"];
+// /game and /leaderboard are public: guests play against a browser-local bankroll
+// and can view the leaderboard, they just can't appear on it.
+const PROTECTED = ["/profile", "/update-password"];
 const AUTH_ONLY = ["/login", "/signup", "/check-email", "/forgot-password"];
 
 export async function middleware(request: NextRequest) {
@@ -43,7 +45,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (pathname === "/") {
-        return NextResponse.redirect(new URL(user ? "/game" : "/login", request.url));
+        return NextResponse.redirect(new URL("/game", request.url));
     }
 
     return supabaseResponse;
