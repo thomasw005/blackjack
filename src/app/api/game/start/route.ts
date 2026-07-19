@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createShoe } from "@/engine/shoe";
-import { startRound } from "@/engine/round";
-import { playDealerHand } from "@/engine/dealer";
-import { settleRound } from "@/engine/settle";
+import { startRound, resolveRound } from "@/engine/round";
 import { GameState, Shoe } from "@/engine/types";
 import { MIN_BET } from "@/engine/constants";
 import { getActiveGame, createGame, saveGameState, completeRound } from "@/lib/db";
@@ -61,9 +59,7 @@ export async function POST(req: NextRequest) {
 
     // Player blackjack (non-ace upcard) — dealer plays immediately
     if (gameState.phase === "dealer-turn") {
-        playDealerHand(gameState, shoe);
-        settleRound(gameState);
-        gameState.phase = "settled";
+        resolveRound(gameState, shoe);
         await completeRound(gameId, user.id, gameState);
     } else {
         await saveGameState(gameId, gameState, shoe);

@@ -35,12 +35,18 @@ export default function LeaderboardPage() {
     const [loadError, setLoadError] = useState(false);
     const [mainTab, setMainTab] = useState<MainTab>("rich");
     const [periodTab, setPeriodTab] = useState<PeriodTab>("daily");
+    const [isGuest, setIsGuest] = useState(false);
 
     useEffect(() => {
         fetch("/api/leaderboard")
             .then((r) => r.json())
             .then((d) => setData(d))
             .catch(() => setLoadError(true));
+
+        fetch("/api/game/state")
+            .then((r) => r.json())
+            .then((d) => setIsGuest(!d.authenticated))
+            .catch(() => {});
     }, []);
 
     const isRich = mainTab === "rich";
@@ -78,6 +84,25 @@ export default function LeaderboardPage() {
                 <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
                     Top players by bankroll, biggest gains, and biggest losses.
                 </p>
+
+                {isGuest && (
+                    <div
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 mb-6"
+                        style={{ background: "rgba(62,207,142,0.06)", border: "1px solid var(--brand)" }}
+                    >
+                        <p className="text-sm" style={{ color: "var(--text)" }}>
+                            You&rsquo;re playing as a guest — your chips stay in this browser.{" "}
+                            <span style={{ color: "var(--muted)" }}>Create an account to get on the board.</span>
+                        </p>
+                        <Link
+                            href="/signup"
+                            className="text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:brightness-75 shrink-0"
+                            style={{ background: "var(--brand)", color: "#0f0f0f" }}
+                        >
+                            Sign up
+                        </Link>
+                    </div>
+                )}
 
                 <div
                     className="rounded-xl overflow-hidden"
