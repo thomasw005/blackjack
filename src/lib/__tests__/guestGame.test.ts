@@ -161,4 +161,45 @@ describe("guestGame", () => {
         window.localStorage.setItem("wbj:guest:v1", "not json");
         expect(loadGuest().balance).toBe(GUEST_STARTING_BANKROLL);
     });
+
+    // drawCard never pushes to discardPile, so reshuffleIfNeeded recycles nothing.
+    // A shoe carried across rounds drains to empty and throws ("Shoe is empty")
+    // around round 64 — startGuestRound cuts in a fresh shoe at the cut card.
+    it("survives far more rounds than a single shoe holds", () => {
+        for (let round = 0; round < 300; round++) {
+            const started = startGuestRound(MIN_BET);
+            if ("error" in started) {
+                // Only a drained bankroll is an acceptable stop.
+                expect(started.error).toBe("Insufficient balance");
+                rewardGuest();
+                continue;
+            }
+            playToSettled();
+            const snap = loadGuest();
+            expect(snap.state).toBeNull();
+        }
+    });
+
+    it("never surfaces an engine crash as a broken hand", () => {
+        for (let round = 0; round < 300; round++) {
+            const started = startGuestRound(MIN_BET);
+            if ("error" in started) {
+                rewardGuest();
+                continue;
+            }
+            for (let i = 0; i < 30; i++) {
+                const snap = loadGuest();
+                if (!snap.state) break;
+                const phase = snap.state.phase;
+                let res;
+                if (phase === "insurance") res = applyGuestAction("decline-insurance");
+                else if (phase === "player-turn") res = applyGuestAction("hit");
+                else break;
+                if ("error" in res) {
+                    expect(res.error).not.toMatch(/Something went wrong/);
+                    break;
+                }
+            }
+        }
+    });
 });

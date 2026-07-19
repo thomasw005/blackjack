@@ -18,9 +18,12 @@ import {
 } from "@/engine/round";
 import { sanitizeState } from "@/lib/gameUtils";
 import { ActionType, GameState, Shoe } from "@/engine/types";
-import { MIN_BET } from "@/engine/constants";
+import { MIN_BET, RULES } from "@/engine/constants";
 
 const STORAGE_KEY = "wbj:guest:v1";
+
+// The cut point reshuffleIfNeeded uses (25% penetration of a 6-deck shoe = 78 cards).
+const CUT_CARD = RULES.numDecks * 52 * RULES.reshufflePercent;
 
 // Matches the starting balance the `on_auth_user_created` DB trigger gives accounts.
 export const GUEST_STARTING_BANKROLL = 250;
@@ -109,7 +112,11 @@ export function startGuestRound(
     if (!Number.isInteger(bet) || bet < MIN_BET) return { error: `Minimum bet is $${MIN_BET}` };
     if (bet > save.bankroll) return { error: "Insufficient balance" };
 
-    const shoe: Shoe = save.shoe ?? createShoe();
+    // Carry the shoe between rounds so penetration is realistic, but cut in a fresh
+    // one at the cut card. drawCard never fills discardPile, so reshuffleIfNeeded has
+    // nothing to recycle and the shoe would otherwise drain to empty and throw
+    // (~64 rounds in). Starting a new shoe here is the reshuffle.
+    const shoe: Shoe = save.shoe && save.shoe.cards.length > CUT_CARD ? save.shoe : createShoe();
     const gameState: GameState = {
         playerHands: [],
         dealerHand: { cards: [], holeCardRevealed: false },
@@ -140,13 +147,20 @@ export function applyGuestAction(
     const validationError = validateAction(gameState, action);
     if (validationError) return { error: validationError };
 
-    applyPlayerAction(gameState, shoe, action);
+    // The engine throws on an exhausted shoe. That shouldn't happen now the shoe is
+    // cut at CUT_CARD, but a mid-round exception here would break the UI with no way
+    // out, so fail into a readable error instead of a blank table.
+    try {
+        applyPlayerAction(gameState, shoe, action);
 
-    if (action === "insurance" || action === "decline-insurance") {
-        resolveDeferredBlackjack(gameState);
+        if (action === "insurance" || action === "decline-insurance") {
+            resolveDeferredBlackjack(gameState);
+        }
+
+        if (gameState.phase === "dealer-turn") resolveRound(gameState, shoe);
+    } catch {
+        return { error: "Something went wrong with this hand. Start a new round." };
     }
-
-    if (gameState.phase === "dealer-turn") resolveRound(gameState, shoe);
 
     write({ bankroll: gameState.bankroll, gameState, shoe });
     return { state: sanitizeState(gameState), balance: gameState.bankroll };
