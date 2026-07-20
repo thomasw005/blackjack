@@ -53,6 +53,23 @@ describe("drawCard", () => {
     it("throws when the shoe is empty", () => {
         expect(() => drawCard(makeShoe(0))).toThrow();
     });
+
+    it("moves the drawn card to the discard pile", () => {
+        const shoe = createShoe();
+        const card = drawCard(shoe);
+        expect(shoe.discardPile).toHaveLength(1);
+        expect(shoe.discardPile[0]).toEqual(card);
+    });
+
+    // The discard pile used to stay empty, so reshuffleIfNeeded had nothing to recycle
+    // and a shoe kept across rounds drained until drawCard threw "Shoe is empty".
+    it("sustains a shoe indefinitely when reshuffled at the cut card", () => {
+        const shoe = createShoe();
+        for (let i = 0; i < TOTAL_CARDS * 5; i++) {
+            reshuffleIfNeeded(shoe);
+            expect(() => drawCard(shoe)).not.toThrow();
+        }
+    });
 });
 
 describe("reshuffleIfNeeded", () => {

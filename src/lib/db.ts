@@ -46,9 +46,32 @@ export async function loadGameState(gameId: string, userId: string) {
     return data.state as { gameState: GameState; shoe: Shoe };
 }
 
-// Writes hands + transactions, updates wallet, marks game complete.
+// A player keeps one shoe across rounds, so penetration and the running count carry
+// over and reshuffleIfNeeded actually reaches the cut card. It lives on `profiles`
+// because `games` is per-round — storing it there would keep a ~10KB copy on every
+// completed round.
+//
+// Returns null when the column doesn't exist yet, so this is safe to deploy before the
+// migration runs: the caller just falls back to a fresh shoe (the previous behaviour).
+export async function loadPlayerShoe(userId: string): Promise<Shoe | null> {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+        .from("profiles")
+        .select("shoe")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error || !data?.shoe) return null;
+
+    const shoe = data.shoe as Shoe;
+    if (!Array.isArray(shoe.cards) || !Array.isArray(shoe.discardPile)) return null;
+    if (shoe.cards.length === 0) return null;
+    return shoe;
+}
+
+// Writes hands + transactions, updates wallet, persists the shoe, marks game complete.
 // Call after settleRound has run and insurance has been resolved.
-export async function completeRound(gameId: string, userId: string, gameState: GameState) {
+export async function completeRound(gameId: string, userId: string, gameState: GameState, shoe: Shoe) {
     const admin = createAdminClient();
     const dealerHasBlackjack = isBlackjack(gameState.dealerHand);
 
@@ -92,6 +115,9 @@ export async function completeRound(gameId: string, userId: string, gameState: G
     await Promise.all([
         admin.from("hands").insert(hands),
         admin.from("transactions").insert(transactions),
+        // No-ops if the `shoe` column hasn't been added yet — Supabase reports the
+        // error in the result rather than throwing, so the round still completes.
+        admin.from("profiles").update({ shoe }).eq("id", userId),
         admin.from("wallets").update({
             balance: gameState.bankroll,
             updated_at: new Date().toISOString(),

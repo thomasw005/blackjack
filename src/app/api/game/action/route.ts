@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     if (gameState.phase === "dealer-turn") {
         resolveRound(gameState, shoe);
-        await completeRound(gameId, user.id, gameState);
+        await completeRound(gameId, user.id, gameState, shoe);
     } else {
         await saveGameState(gameId, gameState, shoe);
     }

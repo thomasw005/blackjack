@@ -85,6 +85,39 @@ describe("settleRound", () => {
         expect(state.bankroll).toBe(1000 + 100 * (1 + RULES.blackjackPayout)); // 1250
     });
 
+    it("player blackjack still pays 3:2 when the dealer busts", () => {
+        // The dealer-bust check used to run first, grading a natural as a plain "win"
+        // and paying even money.
+        const hand = makePlayerHand({
+            cards: [{ rank: "A", suit: "hearts" }, { rank: "K", suit: "spades" }],
+            bet: 100,
+        });
+        const state = makeState(hand, [
+            { rank: "10", suit: "hearts" },
+            { rank: "8", suit: "spades" },
+            { rank: "5", suit: "clubs" }, // 23, bust
+        ]);
+        settleRound(state);
+        expect(state.playerHands[0].result).toBe("blackjack");
+        expect(state.bankroll).toBe(1250); // 1000 + 100 + 150, not 1200
+    });
+
+    it("keeps the bankroll a whole number on odd bets", () => {
+        for (const result of ["blackjack", "surrender"] as const) {
+            const hand = makePlayerHand({
+                cards: [{ rank: "A", suit: "hearts" }, { rank: "K", suit: "spades" }],
+                bet: 25,
+                result: result === "surrender" ? "surrender" : null,
+            });
+            const state = makeState(hand, [
+                { rank: "9", suit: "hearts" },
+                { rank: "8", suit: "spades" }, // 17
+            ]);
+            settleRound(state);
+            expect(Number.isInteger(state.bankroll), `${result} of $25`).toBe(true);
+        }
+    });
+
     it("mutual blackjack is a push: returns the original bet", () => {
         const hand = makePlayerHand({
             cards: [{ rank: "A", suit: "hearts" }, { rank: "K", suit: "spades" }],

@@ -53,7 +53,11 @@ describe("guestGame", () => {
         if ("error" in result) return;
 
         expect(result.state.playerHands[0].cards).toHaveLength(2);
-        expect(result.balance).toBe(GUEST_STARTING_BANKROLL - 50);
+        // A natural settles the round on the deal, so the bet is only the whole story
+        // while play is still live.
+        if (result.state.phase !== "settled") {
+            expect(result.balance).toBe(GUEST_STARTING_BANKROLL - 50);
+        }
     });
 
     it("hides the dealer hole card until it is revealed", () => {

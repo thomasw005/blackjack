@@ -51,8 +51,8 @@ src/
   lib/
     auth.ts                     (complete — signUp, signIn, signOut, updateUsername,
                                   updateEmail, resetPassword, updatePassword, deleteUser)
-    db.ts                       (complete — getActiveGame, createGame,
-                                  saveGameState, loadGameState, completeRound)
+    db.ts                       (complete — getActiveGame, createGame, saveGameState,
+                                  loadGameState, loadPlayerShoe, completeRound)
     gameUtils.ts                (complete — sanitizeState: hides dealer hole card)
     guestGame.ts                (complete — signed-out play: client-side engine + localStorage bankroll)
     supabase/
@@ -79,6 +79,11 @@ src/
 ### DB migration required (run in Supabase SQL editor if not already done):
 ```sql
 ALTER TABLE games ADD COLUMN IF NOT EXISTS state jsonb;
+
+-- Holds the player's current shoe so it carries across rounds.
+-- Until this runs, loadPlayerShoe returns null and every round starts on a fresh
+-- shoe (the old behaviour) — the code degrades rather than breaking.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS shoe jsonb;
 ```
 
 ---
@@ -331,7 +336,7 @@ Returns `{ dailyGains, dailyLosses, weeklyGains, weeklyLosses, monthlyGains, mon
 PostgreSQL via Supabase. RLS enabled on all tables. All writes go through the server using the service role key.
 
 ### Tables
-- `profiles` — `id` (FK → auth.users), `username`, `created_at`
+- `profiles` — `id` (FK → auth.users), `username`, `created_at`, `shoe` (jsonb — the player's current shoe, carried across rounds)
 - `wallets` — `user_id` (PK, FK → profiles), `balance` (integer, whole dollars), `updated_at`
 - `games` — `id`, `user_id`, `started_at`, `ended_at`, `status` ('active'|'complete'), `outcome_summary` (jsonb), `state` (jsonb — live GameState+Shoe, null when complete)
 - `hands` — `id`, `game_id`, `hand_index`, `player_cards`, `dealer_cards`, `wager`, `insurance_wager`, `result`, `doubled`, `split_from_hand_id`
@@ -342,7 +347,8 @@ PostgreSQL via Supabase. RLS enabled on all tables. All writes go through the se
 - Cards stored as `jsonb` in `hands` — no normalization needed
 - `games.state` stores `{ gameState, shoe }` during active round, set to null on completion
 - `transactions.game_id` uses `on delete set null` — history survives game deletion
-- `settle.ts` payout is gross: win = 2×bet, push = bet returned, lose = 0, blackjack = bet × 2.5, surrender = bet × 0.5. `startRound` deducts bet upfront.
+- `settle.ts` payout is gross: win = 2×bet, push = bet returned, lose = 0, blackjack = bet + round(bet × 1.5), surrender = ceil(bet ÷ 2). `startRound` deducts bet upfront. Blackjack and surrender round in the player's favour so the bankroll stays a whole number (`wallets.balance` is an integer column) and matches the net that `completeRound` records in `transactions`.
+- One shoe per player, carried across rounds via `profiles.shoe`. `startRound` calls `reshuffleIfNeeded`, which recycles the discard pile at 25% penetration.
 - Insurance resolved in action route, not engine — checked after `playDealerHand` via `isBlackjack(dealerHand)`
 - Starting bankroll: $250 (set by DB trigger `on_auth_user_created`)
 - Reward transactions use `type: "reward"`, `game_id: null` — credited outside of a round
@@ -372,7 +378,7 @@ All core TypeScript types. Key decisions:
 `RULES` (single source of truth), `SUITS`, `RANKS` (as const arrays).
 
 ### `src/engine/shoe.ts`
-`createShoe`, `drawCard`, `reshuffleIfNeeded`. Fisher-Yates shuffle. Reshuffle at 25% penetration.
+`createShoe`, `drawCard`, `reshuffleIfNeeded`. Fisher-Yates shuffle. Reshuffle at 25% penetration. `drawCard` pushes each drawn card to `discardPile` so the reshuffle has something to recycle — without it the pile stays empty, the reshuffle is a no-op, and a shoe kept across rounds drains until `drawCard` throws.
 
 ### `src/engine/hand.ts`
 `getHandValue`, `isSoft`, `isBlackjack`, `isBust`. `isSoft` computes hard total then checks if adding 10 stays ≤ 21. Split aces are not blackjack.
@@ -385,6 +391,8 @@ All core TypeScript types. Key decisions:
 
 ### `src/engine/settle.ts`
 `settleRound` — sets result on each hand, calls payout, updates `state.bankroll`. Gross payout amounts.
+
+Grading order matters: a natural is resolved before the dealer-bust check. With bust checked first, a player blackjack against a busted dealer graded as `"win"` and paid even money instead of 3:2.
 
 ### `src/engine/round.ts`
 `startRound`, `applyPlayerAction`, `advanceToNextHand`. Deal order P1→D1→P2→D2. Insurance phase before player blackjack check.

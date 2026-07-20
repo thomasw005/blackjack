@@ -29,6 +29,12 @@ function shuffle(cards: Card[]): void {
 export function drawCard(shoe: Shoe): Card {
     const card = shoe.cards.shift();
     if (!card) throw new Error("Shoe is empty");
+    // Every drawn card goes to the discard tray so reshuffleIfNeeded has something to
+    // recycle. Without this the pile stays empty, the reshuffle is a no-op, and a shoe
+    // used across rounds drains until drawCard throws. reshuffleIfNeeded only runs
+    // between rounds (from startRound), so cards still in a live hand are never
+    // shuffled back in.
+    shoe.discardPile.push(card);
     return card;
 }
 

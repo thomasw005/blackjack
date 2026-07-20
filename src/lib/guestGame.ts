@@ -18,12 +18,9 @@ import {
 } from "@/engine/round";
 import { sanitizeState } from "@/lib/gameUtils";
 import { ActionType, GameState, Shoe } from "@/engine/types";
-import { MIN_BET, RULES } from "@/engine/constants";
+import { MIN_BET } from "@/engine/constants";
 
 const STORAGE_KEY = "wbj:guest:v1";
-
-// The cut point reshuffleIfNeeded uses (25% penetration of a 6-deck shoe = 78 cards).
-const CUT_CARD = RULES.numDecks * 52 * RULES.reshufflePercent;
 
 // Matches the starting balance the `on_auth_user_created` DB trigger gives accounts.
 export const GUEST_STARTING_BANKROLL = 250;
@@ -112,11 +109,10 @@ export function startGuestRound(
     if (!Number.isInteger(bet) || bet < MIN_BET) return { error: `Minimum bet is $${MIN_BET}` };
     if (bet > save.bankroll) return { error: "Insufficient balance" };
 
-    // Carry the shoe between rounds so penetration is realistic, but cut in a fresh
-    // one at the cut card. drawCard never fills discardPile, so reshuffleIfNeeded has
-    // nothing to recycle and the shoe would otherwise drain to empty and throw
-    // (~64 rounds in). Starting a new shoe here is the reshuffle.
-    const shoe: Shoe = save.shoe && save.shoe.cards.length > CUT_CARD ? save.shoe : createShoe();
+    // Carry the shoe across rounds so penetration is realistic and the count means
+    // something. startRound calls reshuffleIfNeeded, which recycles the discard pile
+    // at the cut card, so the shoe sustains indefinitely.
+    const shoe: Shoe = save.shoe ?? createShoe();
     const gameState: GameState = {
         playerHands: [],
         dealerHand: { cards: [], holeCardRevealed: false },
