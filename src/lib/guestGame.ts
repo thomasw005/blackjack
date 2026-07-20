@@ -109,6 +109,9 @@ export function startGuestRound(
     if (!Number.isInteger(bet) || bet < MIN_BET) return { error: `Minimum bet is $${MIN_BET}` };
     if (bet > save.bankroll) return { error: "Insufficient balance" };
 
+    // Carry the shoe across rounds so penetration is realistic and the count means
+    // something. startRound calls reshuffleIfNeeded, which recycles the discard pile
+    // at the cut card, so the shoe sustains indefinitely.
     const shoe: Shoe = save.shoe ?? createShoe();
     const gameState: GameState = {
         playerHands: [],
@@ -140,13 +143,20 @@ export function applyGuestAction(
     const validationError = validateAction(gameState, action);
     if (validationError) return { error: validationError };
 
-    applyPlayerAction(gameState, shoe, action);
+    // The engine throws on an exhausted shoe. That shouldn't happen now the shoe is
+    // cut at CUT_CARD, but a mid-round exception here would break the UI with no way
+    // out, so fail into a readable error instead of a blank table.
+    try {
+        applyPlayerAction(gameState, shoe, action);
 
-    if (action === "insurance" || action === "decline-insurance") {
-        resolveDeferredBlackjack(gameState);
+        if (action === "insurance" || action === "decline-insurance") {
+            resolveDeferredBlackjack(gameState);
+        }
+
+        if (gameState.phase === "dealer-turn") resolveRound(gameState, shoe);
+    } catch {
+        return { error: "Something went wrong with this hand. Start a new round." };
     }
-
-    if (gameState.phase === "dealer-turn") resolveRound(gameState, shoe);
 
     write({ bankroll: gameState.bankroll, gameState, shoe });
     return { state: sanitizeState(gameState), balance: gameState.bankroll };

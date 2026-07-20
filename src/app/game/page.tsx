@@ -118,10 +118,17 @@ export default function GamePage() {
                     setGameState(data.state);
                 }
             })
-            .catch(startGuestSession);
+            .catch(() => {
+                // A failed request tells us nothing about whether they're signed in.
+                // Guessing "guest" here would show a signed-in player a phantom $250
+                // local bankroll and hide their real one, so surface it instead.
+                setError("Couldn't reach the server. Refresh to try again.");
+            });
     }, []);
 
     async function startGame() {
+        // Session check still pending — we don't yet know which path to take.
+        if (isGuest === null) return;
         if (bankroll !== null && bet > bankroll) {
             setShowAd(true);
             return;
@@ -460,7 +467,9 @@ export default function GamePage() {
                                         style={{ color: "var(--text)" }}
                                     />
                                 </div>
-                                <button onClick={startGame} disabled={loading} className={btnBrand} style={{ background: "var(--brand)", color: "#0f0f0f" }}>
+                                {/* isGuest === null means the session check is still in
+                                    flight — dealing now would pick the wrong path. */}
+                                <button onClick={startGame} disabled={loading || isGuest === null} className={btnBrand} style={{ background: "var(--brand)", color: "#0f0f0f" }}>
                                     {loading ? "Dealing…" : "Deal"}
                                 </button>
                             </>

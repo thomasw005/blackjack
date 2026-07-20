@@ -4,7 +4,7 @@ import { createShoe } from "@/engine/shoe";
 import { startRound, resolveRound } from "@/engine/round";
 import { GameState, Shoe } from "@/engine/types";
 import { MIN_BET } from "@/engine/constants";
-import { getActiveGame, createGame, saveGameState, completeRound } from "@/lib/db";
+import { getActiveGame, createGame, saveGameState, completeRound, loadPlayerShoe } from "@/lib/db";
 import { sanitizeState } from "@/lib/gameUtils";
 
 export async function POST(req: NextRequest) {
@@ -43,7 +43,10 @@ export async function POST(req: NextRequest) {
     }
     const gameId = gameResult.id;
 
-    const shoe: Shoe = createShoe();
+    // Carry the player's shoe over from their last round; startRound reshuffles it at
+    // the cut card. A fresh shoe every round would make the 6-deck rule and the count
+    // meaningless.
+    const shoe: Shoe = (await loadPlayerShoe(user.id)) ?? createShoe();
     const gameState: GameState = {
         playerHands: [],
         dealerHand: { cards: [], holeCardRevealed: false },
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
     // Player blackjack (non-ace upcard) — dealer plays immediately
     if (gameState.phase === "dealer-turn") {
         resolveRound(gameState, shoe);
-        await completeRound(gameId, user.id, gameState);
+        await completeRound(gameId, user.id, gameState, shoe);
     } else {
         await saveGameState(gameId, gameState, shoe);
     }
